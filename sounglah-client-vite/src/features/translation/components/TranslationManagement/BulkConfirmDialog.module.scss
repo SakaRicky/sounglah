@@ -1,0 +1,31 @@
+@use '@/styles/colors' as *;
+@use '@/styles/breakpoints' as *;
+
+.dialogTitle {
+  font-family: 'Georgia', serif;
+  font-weight: bold;
+  color: $color-brown-8;
+}
+
+.dialogContent {
+  font-size: 1.1rem;
+  color: $color-brown-8;
+  font-family: 'Georgia', serif;
+}
+
+// Brand-consistent dialog container
+.dialogPaper {
+  background: $color-beige-6 !important;
+  border-radius: 18px !important;
+  box-shadow: 0 6px 32px rgba(78, 59, 42, 0.13) !important;
+  padding: 0.5rem 1.5rem 1.5rem 1.5rem !important;
+  border: 2px solid $color-brown-2 !important;
+}
+
+.dialogActions {
+  display: flex;
+  flex-direction: row;
+  gap: 1.2rem;
+  justify-content: flex-end;
+  padding: 1.2rem 1rem 1rem 1rem;
+} 

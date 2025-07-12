@@ -1,0 +1,53 @@
+@use '@/styles/colors' as *;
+@use '@/styles/breakpoints' as *;
+
+.bulkActionBar {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  background: linear-gradient(90deg, $color-beige-2 0%, $color-beige-0 100%);
+  border-bottom: 2.5px solid $color-orange-4;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+  box-shadow: 0 4px 18px 0 rgba($color-brown-8, 0.10), 0 1.5px 0 0 $color-orange-4;
+  padding: 0.85rem 2rem 0.85rem 1.5rem;
+  margin: 0;
+  gap: 1.5rem;
+  font-family: 'Georgia', serif;
+  animation: fadeSlideIn 0.3s cubic-bezier(0.4, 0.2, 0.2, 1);
+
+  @media (max-width: 700px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 1rem 0.5rem;
+  }
+}
+
+.bulkActionCount {
+  font-weight: bold;
+  color: $color-brown-8;
+  font-size: 1.1rem;
+  margin-right: 1.5rem;
+  letter-spacing: 0.5px;
+  @media (max-width: 700px) {
+    margin-right: 0;
+    margin-bottom: 0.5rem;
+  }
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+} 

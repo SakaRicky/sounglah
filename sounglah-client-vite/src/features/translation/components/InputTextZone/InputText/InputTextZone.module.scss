@@ -1,0 +1,53 @@
+@use "@/styles/breakpoints" as *;
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+
+.paper {
+  z-index: 10;
+  background-color: $color-beige-0!important;
+  margin: $spacing-xs 0;
+  width: 100%;
+  flex: 1;
+  display: flex !important;
+  flex-direction: column;
+  gap: 1rem;
+
+  @media (min-width: $breakpoint-md) {
+    width: auto;
+  }
+}
+
+.paperError {
+  border: 2px solid $color-red-5;
+}
+
+.textArea {
+  height: 20vh;
+  background: "inherit";
+  outline: $color-brown-5;
+  border: none;
+  width: 100%;
+  font-size: 1.5rem; 
+
+  @media (min-width: $breakpoint-md) {
+    height: 30vh;
+  }
+
+  textarea {
+    padding: 1rem;
+    border: 2px solid $color-brown-3;
+    border-radius: 8px;
+    font-size: $spacing-md;
+    background: inherit;
+    resize: vertical;      
+    transition: border 0.2s;
+    width: 100%;
+    height: 100%;
+
+    &:focus {
+      border-color: $color-brown-5; // focus state
+      outline: none;
+      background: $color-beige-1;
+    }
+  }
+}

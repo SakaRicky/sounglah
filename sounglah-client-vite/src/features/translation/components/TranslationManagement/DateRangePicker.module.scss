@@ -1,0 +1,27 @@
+@use '@/styles/breakpoints' as *;
+
+.dateRangeContainer {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.dateField {
+  flex: 1;
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    width: 40vw;
+  }
+}
+
+// --- DatePicker focus override ---
+:global(.MuiOutlinedInput-root input:focus) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+:global(.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline) {
+  border-color: #fb8c00 !important;
+  border-width: 2px !important;
+} 

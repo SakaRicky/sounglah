@@ -1,0 +1,34 @@
+@use "@/styles/breakpoints" as *;
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+
+.footer {
+  color: $color-brown-5;
+  margin-top: auto;
+
+  background-image: url('@/assets/images/Ndop_Patterns_yellow_brown.svg');
+
+  background-repeat: repeat-x;
+  background-size: auto 100%;
+  height: 56px;
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100vw;
+  z-index: 10;
+}
+
+.container {
+  width: 80%;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem; 
+  min-height: 3rem;
+
+  @media (max-width: $breakpoint-lg) {
+    width: 100%;
+  }
+}

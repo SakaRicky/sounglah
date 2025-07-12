@@ -1,0 +1,25 @@
+@use "@/styles/breakpoints" as *;
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+
+.root {
+  z-index: 10;
+  background: $color-beige-0!important;
+  margin: 1rem 0;
+  width: 100%;
+  flex: 1;
+}
+
+.translatedTextArea {
+  border: 2px solid $color-brown-5;
+  border-radius: 0.5rem;
+  height: 20vh;
+  margin-top: 1rem;
+  padding: 1rem;
+  font-size: 1.5rem;
+
+  /* Convert the createStyles media query syntax */
+  @media (min-width: $breakpoint-md) {
+    height: 30vh;
+  }
+}

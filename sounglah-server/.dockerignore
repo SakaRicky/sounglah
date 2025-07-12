@@ -1,0 +1,15 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.pytest_cache
+.vscode/
+node_modules/ # If your React project was inside your Flask repo
+build/        # If your React project's build is outside frontend_build
+.DS_Store
+*.swp
+
+huggingface_cache/

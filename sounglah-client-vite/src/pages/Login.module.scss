@@ -1,0 +1,157 @@
+@use "@/styles/breakpoints" as *;
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+
+.loginPageBg {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  margin-top: 2rem;
+}
+
+.logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1.5rem;
+
+  img {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 0.5rem;
+  }
+
+  .brand {
+    font-family: 'Georgia', serif;
+    font-size: 2rem;
+    font-weight: bold;
+    color: $color-brown-9;
+    letter-spacing: 0.5px;
+  }
+}
+
+.card {
+  background: $color-beige-0;
+  border: 2px solid $color-brown-2;
+  border-radius: 16px;
+  padding: 2.5rem 2rem 2rem 2rem;
+  min-width: 340px;
+  max-width: 95vw;
+  box-shadow: 0 4px 24px rgba(61, 44, 19, 0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.title {
+  font-family: 'Georgia', serif;
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: $color-brown-9;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-family: 'Georgia', serif;
+  font-weight: bold;
+  color: $color-brown-9;
+  font-size: 1.1rem;
+}
+
+.input {
+  background: $color-beige-0;
+  border: 2px solid $color-brown-2;
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  font-size: 1.1rem;
+  color: $color-brown-9;
+  transition: border-color 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: $color-brown-4;
+  }
+}
+
+.button {
+  background: $color-orange-5;
+  color: $color-beige-0;
+  font-size: 1.2rem;
+  font-family: 'Georgia', serif;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  padding: 1rem 0;
+  margin-top: 0.5rem;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover:not(:disabled) {
+    background: $color-orange-6;
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+.error {
+  background: $color-red-0;
+  color: $color-red-4;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid $color-red-2;
+  margin-bottom: 1rem;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.patternBar {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 56px;
+  background: $color-green-5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.patternSvg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.patternSvg g {
+  stroke: $color-gold-4;
+}
+
+@media (max-width: 500px) {
+  .card {
+    min-width: 90vw;
+    padding: 2rem;
+  }
+  .title {
+    font-size: 2rem;
+  }
+} 

@@ -1,0 +1,99 @@
+@use "@/styles/colors" as *;
+@use "@/styles/breakpoints" as *;
+
+.sounglahButton {
+  background: linear-gradient(90deg, #fb8c00 0%, #ffb347 100%);
+  color: #fff4e5;
+  font-weight: 700;
+  font-size: 1rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.55em 1.5em;
+  box-shadow: 0 4px 16px rgba(251, 140, 0, 0.12);
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  font-family: 'Georgia', serif;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+
+  &:hover, &:focus {
+    background: linear-gradient(90deg, #e67600 0%, #fb8c00 100%);
+    box-shadow: 0 6px 24px rgba(251, 140, 0, 0.18);
+    outline: none;
+    transform: translateY(-2px) scale(1.03);
+  }
+
+  &:active {
+    background: #e67600;
+    box-shadow: 0 2px 8px rgba(251, 140, 0, 0.10);
+    transform: scale(0.98);
+  }
+
+  .content {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+  }
+
+  svg {
+    font-size: 1.15em;
+    vertical-align: middle;
+    margin-right: 0.35em;
+    margin-bottom: 2px;
+  }
+
+  @media (max-width: 700px) {
+    padding: 0.7rem 1.2rem;
+    font-size: 0.7rem;
+  }
+}
+
+.primary {
+  background: $color-orange-5;
+  color: $color-beige-0;
+  border: 1px solid $color-orange-5;
+  &:hover:enabled {
+    background: $color-orange-7;
+    border-color: $color-orange-7;
+  }
+}
+
+.secondary {
+  background: $color-beige-0;
+  color: $color-brown-9;
+  border: 1.5px solid $color-brown-3;
+  &:hover:enabled {
+    background: $color-brown-2;
+    border-color: $color-brown-7;
+  }
+}
+
+.outline {
+  background: transparent;
+  color: $color-orange-5;
+  border: 1.5px solid $color-orange-5;
+  &:hover:enabled {
+    background: $color-orange-1;
+  }
+}
+
+:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.radius-small {
+  border-radius: 4px !important;
+}
+.radius-medium {
+  border-radius: 12px !important;
+}
+.radius-large {
+  border-radius: 50px !important;
+}
+.radius-round {
+  border-radius: 999px !important;
+} 

@@ -1,0 +1,14 @@
+@use "@/styles/colors" as *;
+@use "@/styles/breakpoints" as *;
+
+.selectInput {
+  background: inherit !important;
+  &:focus {
+    border-color: $color-brown-5;
+  }
+}
+
+.selectDropdown {
+  background-color: $color-beige-1 !important;
+  z-index: 1000 !important;
+} 

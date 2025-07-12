@@ -1,0 +1,43 @@
+@use "@/styles/breakpoints" as *;
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+
+.btn {
+  display: block;
+  cursor: pointer;
+  margin: 1rem auto; 
+  color: $color-beige-0;
+  font-size: 1.2rem; 
+  height: 2.5rem;
+  padding: 0.5rem 0;
+  transition: all 150ms ease-in;
+  border: none;
+  border-radius: 0.75rem;
+
+  @media (max-width: $breakpoint-sm) {
+    width: 100%; 
+    padding: 0 1rem;
+  }
+}
+
+.btn-primary {
+    background-color: $color-orange-4!important;
+
+    &:hover {
+    background-color: $color-orange-6!important;
+    color: $color-beige-0;
+  }
+}
+
+.btn-secondary {
+    background-color: $color-brown-4!important;
+    
+    &:hover {
+    background-color: $color-brown-5!important;
+  }
+}
+
+.btn-disabled {
+    background-color: $color-gray-4!important;
+    cursor: not-allowed;
+}

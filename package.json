@@ -1,0 +1,19 @@
+{
+  "name": "sounglah-fullstack",
+  "version": "1.0.0",
+  "description": "Sounglah Translation App - Full Stack",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:client": "cd sounglah-client-vite && npm run dev",
+    "dev:server": "cd sounglah-server && python main.py",
+    "install:all": "npm install && cd sounglah-client-vite && npm install",
+    "build": "cd sounglah-client-vite && npm run build",
+    "start": "cd sounglah-server && python main.py"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": ["translation", "ai", "fullstack"],
+  "author": "",
+  "license": "ISC"
+} 

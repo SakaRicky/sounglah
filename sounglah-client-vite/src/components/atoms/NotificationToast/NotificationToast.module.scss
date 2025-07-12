@@ -1,0 +1,512 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/breakpoints" as *;
+
+.notificationToast {
+  position: relative;
+  margin-bottom: $spacing-sm;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  border: 1px solid transparent;
+  max-width: 480px;
+  min-width: 320px;
+  overflow: hidden;
+  transform: translateX(100%);
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.95);
+  
+  &.visible {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  
+  // Type-specific styling
+  &.success {
+    border-color: var(--color-green-5);
+    border-width: 2px;
+    background: linear-gradient(135deg, 
+      rgba(108, 164, 137, 0.12) 0%, 
+      rgba(255, 255, 255, 0.98) 100%);
+    box-shadow: 0 8px 32px rgba(108, 164, 137, 0.15);
+    
+    .borderAccent {
+      background: linear-gradient(90deg, var(--color-green-5), var(--color-green-7));
+      height: 6px;
+    }
+    
+    .typeLabel {
+      color: var(--color-green-8);
+      background: rgba(108, 164, 137, 0.2);
+      font-weight: 700;
+    }
+    
+    .iconContainer {
+      background: rgba(108, 164, 137, 0.15);
+      border: 2px solid var(--color-green-4);
+    }
+    
+    .title {
+      color: var(--color-green-9);
+    }
+  }
+  
+  &.error {
+    border-color: var(--color-red-5);
+    border-width: 2px;
+    background: linear-gradient(135deg, 
+      rgba(220, 38, 38, 0.12) 0%, 
+      rgba(255, 255, 255, 0.98) 100%);
+    box-shadow: 0 8px 32px rgba(220, 38, 38, 0.15);
+    
+    .borderAccent {
+      background: linear-gradient(90deg, var(--color-red-5), var(--color-red-7));
+      height: 6px;
+    }
+    
+    .typeLabel {
+      color: var(--color-red-8);
+      background: rgba(220, 38, 38, 0.2);
+      font-weight: 700;
+    }
+    
+    .iconContainer {
+      background: rgba(220, 38, 38, 0.15);
+      border: 2px solid var(--color-red-4);
+    }
+    
+    .title {
+      color: var(--color-red-9);
+    }
+  }
+  
+  &.warning {
+    border-color: var(--color-orange-5);
+    border-width: 2px;
+    background: linear-gradient(135deg, 
+      rgba(251, 146, 60, 0.12) 0%, 
+      rgba(255, 255, 255, 0.98) 100%);
+    box-shadow: 0 8px 32px rgba(251, 146, 60, 0.15);
+    
+    .borderAccent {
+      background: linear-gradient(90deg, var(--color-orange-5), var(--color-orange-7));
+      height: 6px;
+    }
+    
+    .typeLabel {
+      color: var(--color-orange-8);
+      background: rgba(251, 146, 60, 0.2);
+      font-weight: 700;
+    }
+    
+    .iconContainer {
+      background: rgba(251, 146, 60, 0.15);
+      border: 2px solid var(--color-orange-4);
+    }
+    
+    .title {
+      color: var(--color-orange-9);
+    }
+  }
+  
+  &.info {
+    border-color: var(--color-blue-5);
+    border-width: 2px;
+    background: linear-gradient(135deg, 
+      rgba(59, 130, 246, 0.12) 0%, 
+      rgba(255, 255, 255, 0.98) 100%);
+    box-shadow: 0 8px 32px rgba(59, 130, 246, 0.15);
+    
+    .borderAccent {
+      background: linear-gradient(90deg, var(--color-blue-5), var(--color-blue-7));
+      height: 6px;
+    }
+    
+    .typeLabel {
+      color: var(--color-blue-8);
+      background: rgba(59, 130, 246, 0.2);
+      font-weight: 700;
+    }
+    
+    .iconContainer {
+      background: rgba(59, 130, 246, 0.15);
+      border: 2px solid var(--color-blue-4);
+    }
+    
+    .title {
+      color: var(--color-blue-9);
+    }
+  }
+}
+
+.borderAccent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--color-brown-4);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  padding: $spacing-md $spacing-lg;
+  gap: $spacing-md;
+}
+
+.iconContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.titleSection {
+  flex: 1;
+  min-width: 0;
+}
+
+.typeLabel {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-bottom: $spacing-xs;
+  font-family: 'Georgia', serif;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-brown-9);
+  margin: 0;
+  line-height: 1.4;
+  font-family: 'Georgia', serif;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  flex-shrink: 0;
+}
+
+.undoButton {
+  color: var(--color-brown-6) !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-radius: 50% !important;
+  width: 32px !important;
+  height: 32px !important;
+  
+  &:hover {
+    color: var(--color-brown-8) !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    transform: scale(1.05);
+  }
+  
+  svg {
+    font-size: 16px;
+  }
+}
+
+.retryButton {
+  color: var(--color-brown-6) !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-radius: 50% !important;
+  width: 32px !important;
+  height: 32px !important;
+  
+  &:hover {
+    color: var(--color-brown-8) !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    transform: scale(1.05);
+  }
+  
+  svg {
+    font-size: 16px;
+  }
+}
+
+.closeButton {
+  color: var(--color-brown-6) !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-radius: 50% !important;
+  width: 32px !important;
+  height: 32px !important;
+  
+  &:hover {
+    color: var(--color-brown-8) !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    transform: scale(1.05);
+  }
+  
+  svg {
+    font-size: 16px;
+  }
+}
+
+.content {
+  padding: 0 $spacing-lg $spacing-md;
+}
+
+.detail {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-brown-7);
+  margin-bottom: $spacing-sm;
+}
+
+.errorSection {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding-top: $spacing-sm;
+  margin-top: $spacing-sm;
+}
+
+.expandButton {
+  background: none;
+  border: none;
+  color: var(--color-brown-6);
+  font-size: 12px;
+  cursor: pointer;
+  padding: $spacing-xs $spacing-sm;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    color: var(--color-brown-8);
+    background: rgba(0, 0, 0, 0.04);
+  }
+  
+  &:focus {
+    outline: 2px solid var(--color-brown-4);
+    outline-offset: 2px;
+  }
+}
+
+.expandIcon {
+  font-weight: bold;
+  font-size: 14px;
+  width: 16px;
+  text-align: center;
+}
+
+.errorDetails {
+  margin-top: $spacing-sm;
+  padding: $spacing-md;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 8px;
+  border-left: 3px solid var(--color-red-4);
+  animation: slideDown 0.3s ease-out;
+}
+
+.errorMessage {
+  font-size: 13px;
+  color: var(--color-brown-8);
+  margin-bottom: $spacing-xs;
+  word-break: break-word;
+}
+
+.recoverySuggestion {
+  font-size: 13px;
+  color: var(--color-brown-7);
+  margin-bottom: $spacing-xs;
+  font-style: italic;
+  padding: $spacing-xs;
+  background: rgba(108, 164, 137, 0.05);
+  border-radius: 4px;
+  border-left: 2px solid var(--color-green-4);
+}
+
+.errorContext {
+  margin-top: $spacing-sm;
+  
+  summary {
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--color-brown-6);
+    font-weight: 500;
+    padding: $spacing-xs;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    
+    &:hover {
+      color: var(--color-brown-8);
+      background: rgba(0, 0, 0, 0.04);
+    }
+  }
+  
+  pre {
+    margin-top: $spacing-xs;
+    font-size: 11px;
+    background: rgba(0, 0, 0, 0.05);
+    padding: $spacing-sm;
+    border-radius: 4px;
+    overflow-x: auto;
+    color: var(--color-brown-7);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+  }
+}
+
+.errorId {
+  margin-top: $spacing-sm;
+  font-size: 11px;
+  color: var(--color-brown-5);
+  text-align: center;
+  padding: $spacing-xs;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 4px;
+  
+  code {
+    background: rgba(0, 0, 0, 0.1);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 10px;
+  }
+}
+
+.progressBar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-brown-4), var(--color-brown-6));
+  animation: progressShrink linear forwards;
+  transform-origin: left;
+}
+
+// Icons with custom styling
+.successIcon {
+  color: var(--color-green-8) !important;
+  font-size: 22px !important;
+}
+
+.errorIcon {
+  color: var(--color-red-8) !important;
+  font-size: 22px !important;
+}
+
+.warningIcon {
+  color: var(--color-orange-8) !important;
+  font-size: 22px !important;
+}
+
+.infoIcon {
+  color: var(--color-blue-8) !important;
+  font-size: 22px !important;
+}
+
+// Animations
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes progressShrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+// Hover effects
+.notificationToast:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+// Mobile responsiveness
+@media (max-width: $breakpoint-sm) {
+  .notificationToast {
+    min-width: 280px;
+    max-width: calc(100vw - 32px);
+    margin: 0 $spacing-sm $spacing-sm;
+  }
+  
+  .header {
+    padding: $spacing-sm $spacing-md;
+  }
+  
+  .content {
+    padding: 0 $spacing-md $spacing-sm;
+  }
+  
+  .title {
+    font-size: 15px;
+  }
+  
+  .detail {
+    font-size: 13px;
+  }
+  
+  .actions {
+    gap: $spacing-xs;
+  }
+  
+  .retryButton,
+  .closeButton {
+    width: 28px !important;
+    height: 28px !important;
+    
+    svg {
+      font-size: 14px;
+    }
+  }
+}
+
+@media (max-width: $breakpoint-xs) {
+  .notificationToast {
+    min-width: 260px;
+    margin: 0 $spacing-xs $spacing-sm;
+  }
+  
+  .header {
+    padding: $spacing-xs $spacing-sm;
+    gap: $spacing-sm;
+  }
+  
+  .content {
+    padding: 0 $spacing-sm $spacing-xs;
+  }
+  
+  .iconContainer {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .title {
+    font-size: 14px;
+  }
+  
+  .typeLabel {
+    font-size: 10px;
+  }
+} 

@@ -1,0 +1,137 @@
+@use "@/styles/colors" as *;
+@use "@/styles/breakpoints" as *;
+
+.modalHeader {
+  background: $color-brown-5;
+  color: $color-beige-0;
+  padding: 1.5rem 2rem;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.modalTitle {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: 'Georgia, serif';
+}
+
+.uploadButton {
+  background: $color-orange-4 !important;
+  color: $color-beige-0 !important;
+  font-weight: 700;
+  font-size: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  min-width: 120px;
+}
+
+.selectedFile {
+  margin-bottom: 8px;
+  color: $color-brown-5;
+}
+
+.errorText {
+  color: $color-red-4;
+  margin-bottom: 8px;
+}
+
+.languageInfo {
+  margin-bottom: 16px;
+  font-weight: 600;
+  color: $color-brown-5;
+  font-size: 18px;
+}
+
+.previewTableWrapper {
+  background: $color-beige-0;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1.5px solid $color-brown-5;
+  /* overflow: auto; */
+}
+
+.previewTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Georgia, serif';
+  display: block;
+  max-height: 350px;
+  overflow: auto;
+}
+
+.previewTable thead {
+  background: $color-brown-5;
+  color: $color-beige-0;
+}
+
+.previewTable thead, .previewTable tbody {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.previewTable tbody {
+  display: block;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.previewTable th {
+  padding: 0.8rem;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.previewTable td {
+  padding: 0.7rem;
+  font-size: 15px;
+}
+
+.statusOk {
+  color: $color-green-4;
+  font-weight: 600;
+}
+
+.statusError {
+  color: $color-red-4;
+  font-weight: 600;
+}
+
+.resultTableWrapper {
+  background: $color-beige-0;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1.5px solid $color-brown-5;
+  overflow: auto;
+}
+
+.resultTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Georgia, serif';
+}
+
+.resultTable thead {
+  background: $color-brown-5;
+  color: $color-beige-0;
+}
+
+.resultTable th {
+  padding: 0.8rem;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.resultTable td {
+  padding: 0.7rem;
+}
+
+.resultRowOk {
+  background: $color-green-0;
+}
+
+.resultRowError {
+  background: $color-red-0;
+} 

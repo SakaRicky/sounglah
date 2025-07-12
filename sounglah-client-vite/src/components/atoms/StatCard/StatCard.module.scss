@@ -1,0 +1,257 @@
+@use "@/styles/colors" as *;
+@use "@/styles/spacing" as *;
+@use "@/styles/breakpoints" as *;
+
+// New earthy African palette
+$color-green-deep: #078930;
+$color-yellow-warm: #fde642;
+$color-orange-rich: #fb8c00;
+$color-brown-earth: #4e3b2a;
+$color-beige-light: #fff4e5;
+$color-beige-sand: #f5e1c6;
+$color-red-deep: #da121a;
+
+.statCard {
+  position: relative;
+  background: linear-gradient(135deg, $color-beige-sand 0%, $color-beige-light 100%);
+  border: 2px solid $color-brown-earth;
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(78, 59, 42, 0.10);
+  padding: $spacing-lg $spacing-xl;
+  min-width: 180px;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
+  
+  // Subtle geometric SVG pattern overlay
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url('data:image/svg+xml;utf8,<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="100" height="100" fill="none"/><path d="M0 50 L50 0 L100 50 L50 100 Z" stroke="%234e3b2a" stroke-width="2" fill="none" opacity="0.07"/><circle cx="50" cy="50" r="20" stroke="%23fb8c00" stroke-width="2" fill="none" opacity="0.08"/></svg>');
+    background-size: 120px 120px;
+    background-repeat: repeat;
+    opacity: 0.7;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(78, 59, 42, 0.16);
+  }
+
+  // Type-specific styling
+  &.default {
+    border-color: $color-brown-earth;
+    .iconContainer {
+      background: rgba(78, 59, 42, 0.10);
+      border: 2px solid $color-brown-earth;
+    }
+    .statLabel {
+      color: $color-brown-earth;
+      background: rgba(78, 59, 42, 0.08);
+    }
+    .statValue {
+      color: $color-brown-earth;
+    }
+  }
+  &.success {
+    border-color: $color-green-deep;
+    .iconContainer {
+      background: rgba(7, 137, 48, 0.12);
+      border: 2px solid $color-green-deep;
+    }
+    .statLabel {
+      color: $color-green-deep;
+      background: rgba(7, 137, 48, 0.10);
+    }
+    .statValue {
+      color: $color-green-deep;
+    }
+  }
+  &.warning {
+    border-color: $color-yellow-warm;
+    .iconContainer {
+      background: rgba(253, 230, 66, 0.12);
+      border: 2px solid $color-yellow-warm;
+    }
+    .statLabel {
+      color: $color-yellow-warm;
+      background: rgba(253, 230, 66, 0.10);
+    }
+    .statValue {
+      color: $color-yellow-warm;
+    }
+  }
+  &.info {
+    border-color: $color-orange-rich;
+    .iconContainer {
+      background: rgba(251, 140, 0, 0.12);
+      border: 2px solid $color-orange-rich;
+    }
+    .statLabel {
+      color: $color-orange-rich;
+      background: rgba(251, 140, 0, 0.10);
+    }
+    .statValue {
+      color: $color-orange-rich;
+    }
+  }
+  &.error {
+    border-color: $color-red-deep;
+    .iconContainer {
+      background: rgba(218, 18, 26, 0.12);
+      border: 2px solid $color-red-deep;
+    }
+    .statLabel {
+      color: $color-red-deep;
+      background: rgba(218, 18, 26, 0.10);
+    }
+    .statValue {
+      color: $color-red-deep;
+    }
+  }
+}
+
+.borderAccent {
+  display: none;
+}
+
+.iconContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: $spacing-md;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+  z-index: 1;
+  svg {
+    font-size: 24px;
+  }
+  .statCard:hover & {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-sm;
+  width: 100%;
+  z-index: 1;
+}
+
+.labelContainer {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.statLabel {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-family: 'Georgia', serif;
+  white-space: nowrap;
+}
+
+.trendIndicator {
+  font-size: 16px;
+  font-weight: bold;
+  animation: pulse 2s infinite;
+}
+
+.valueContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.statValue {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0;
+  font-family: 'Georgia', serif;
+  line-height: 1.2;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.patternOverlay {
+  display: none;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+@media (max-width: $breakpoint-sm) {
+  .statCard {
+    min-width: 160px;
+    min-height: 120px;
+    padding: $spacing-md $spacing-lg;
+  }
+  .iconContainer {
+    width: 40px;
+    height: 40px;
+    margin-bottom: $spacing-sm;
+    svg {
+      font-size: 20px;
+    }
+  }
+  .statValue {
+    font-size: 2rem;
+  }
+  .statLabel {
+    font-size: 11px;
+    padding: 3px 10px;
+  }
+}
+
+@media (max-width: $breakpoint-xs) {
+  .statCard {
+    min-width: 140px;
+    min-height: 110px;
+    padding: $spacing-sm $spacing-md;
+  }
+  .iconContainer {
+    width: 36px;
+    height: 36px;
+    svg {
+      font-size: 18px;
+    }
+  }
+  .statValue {
+    font-size: 1.8rem;
+  }
+  .statLabel {
+    font-size: 10px;
+    padding: 2px 8px;
+  }
+} 
