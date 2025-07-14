@@ -44,11 +44,19 @@ class AudioRecording(db.Model):
     quality = db.Column(db.Text)
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
+class Role(db.Model):
+    __tablename__ = 'roles'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(64), unique=True, nullable=False)
+    description = db.Column(db.Text)
+    users = db.relationship('User', back_populates='role')
+
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.Text, unique=True, nullable=False)
     email = db.Column(db.Text, unique=True, nullable=False)
     password_hash = db.Column(db.Text, nullable=False)
-    role = db.Column(db.Text, default='editor', index=True)
+    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'), nullable=False, index=True)
+    role = db.relationship('Role', back_populates='users')
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)

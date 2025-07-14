@@ -2,7 +2,7 @@ import pytest
 import os
 import bcrypt
 from my_app import create_app, db
-from my_app.models import User, Language, TranslationPair
+from my_app.models import User, Language, TranslationPair, Role
 from my_app.jwt_utils import generate_token
 
 @pytest.fixture
@@ -50,11 +50,17 @@ def sample_user(app):
     with app.app_context():
         password = '12345678'
         password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        # Ensure roles exist
+        role = Role.query.filter_by(name='admin').first()
+        if not role:
+            role = Role(name='admin', description='Administrator')
+            db.session.add(role)
+            db.session.commit()
         user = User(
             username='admin',
             email='admin@example.com',
             password_hash=password_hash,
-            role='admin'
+            role_id=role.id
         )
         db.session.add(user)
         db.session.commit()
@@ -62,7 +68,7 @@ def sample_user(app):
         return {
             'id': user.id,
             'username': user.username,
-            'role': user.role
+            'role': role.name
         }
 
 @pytest.fixture

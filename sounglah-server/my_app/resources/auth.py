@@ -1,6 +1,6 @@
 from flask import Blueprint
 from flask_restx import Api, Resource
-from ..models import User
+from ..models import User, Role
 from ..jwt_utils import generate_token, verify_password, token_required, get_current_user
 from ..parsers import login_args
 
@@ -23,7 +23,7 @@ class LoginResource(Resource):
             return {'error': 'Invalid username or password'}, 401
         if not verify_password(user.password_hash, password):
             return {'error': 'Invalid username or password'}, 401
-        token = generate_token(user.id, user.username, user.role)
+        token = generate_token(user.id, user.username, user.role.name if user.role else None)
         return {
             'message': 'Login successful',
             'token': token,
@@ -31,7 +31,7 @@ class LoginResource(Resource):
                 'id': user.id,
                 'username': user.username,
                 'email': user.email,
-                'role': user.role
+                'role': user.role.name if user.role else None
             }
         }
 
@@ -50,6 +50,6 @@ class ValidateTokenResource(Resource):
                 'id': current_user.id,
                 'username': current_user.username,
                 'email': current_user.email,
-                'role': current_user.role
+                'role': current_user.role.name if current_user.role else None
             }
         } 

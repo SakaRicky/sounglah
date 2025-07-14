@@ -8,12 +8,21 @@
     "dev:server": "cd sounglah-server && python main.py",
     "install:all": "npm install && cd sounglah-client-vite && npm install",
     "build": "cd sounglah-client-vite && npm run build",
+    "build:deploy": "npm run build",
+    "copy:frontend": "echo 'Frontend already built to server directory by Vite config'",
+    "deploy": "npm run build:deploy && cd sounglah-server && fly deploy",
     "start": "cd sounglah-server && python main.py"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "cpr": "^3.0.1",
+    "rimraf": "^6.0.1"
   },
-  "keywords": ["translation", "ai", "fullstack"],
+  "keywords": [
+    "translation",
+    "ai",
+    "fullstack"
+  ],
   "author": "",
   "license": "ISC"
-} 
+}

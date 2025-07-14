@@ -7,12 +7,11 @@
   min-height: 350px;
   background: $color-brown-9;
   border-radius: 14px;
-  box-shadow: 0 2px 8px rgba(61, 44, 19, 0.04);
+  box-shadow: 0 4px 16px rgba($color-brown-5, 0.10);
   border: 2px solid $color-brown-2;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  border: 5px solid green;
 }
 
 .table {

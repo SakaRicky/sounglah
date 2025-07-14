@@ -2,7 +2,7 @@
 
 import pandas as pd
 from my_app import create_app, db
-from my_app.models import Language, TranslationPair, User, AudioRecording
+from my_app.models import Language, TranslationPair, User, AudioRecording, Role
 import random
 
 
@@ -45,6 +45,7 @@ def clear_database():
 
 def create_users():
     """Create admin, reviewers, editor, and viewer users."""
+    roles = {r.name: r for r in Role.query.all()}
     users = [
         {
             "username": "admin",
@@ -78,7 +79,15 @@ def create_users():
         }
     ]
     for user_data in users:
-        user = User(**user_data)
+        role_obj = roles.get(user_data["role"])
+        if not role_obj:
+            continue  # skip if role not found
+        user = User(
+            username=user_data["username"],
+            email=user_data["email"],
+            password_hash=user_data["password_hash"],
+            role_id=role_obj.id
+        )
         db.session.add(user)
     db.session.commit()
     print("✅ Users created.")
@@ -106,16 +115,17 @@ def seed_from_csv(file_path):
     target_lang_id = get_or_create_language('Medumba')
 
     # Get reviewer user ids
-    reviewers = User.query.filter_by(role='reviewer').all()
+    reviewer_role = Role.query.filter_by(name='reviewer').first()
+    reviewers = User.query.filter_by(role_id=reviewer_role.id).all() if reviewer_role else []
     reviewer_ids = [user.id for user in reviewers]
 
-    statuses = ['approved', 'pending', 'rejected']
+    # All statuses are 'approved' for CSV upload
+    status = 'approved'
 
+    # Prepare all records in memory first
+    translation_pairs = []
     for _, row in df.iterrows():
-        status = random.choice(statuses)
-        reviewer_id = None
-        if status == 'approved' and reviewer_ids:
-            reviewer_id = random.choice(reviewer_ids)
+        reviewer_id = random.choice(reviewer_ids) if reviewer_ids else None
         pair = TranslationPair(
             source_text=row['source_text'],
             target_text=row['target_text'],
@@ -125,10 +135,49 @@ def seed_from_csv(file_path):
             status=status,
             reviewer_id=reviewer_id
         )
-        db.session.add(pair)
+        translation_pairs.append(pair)
 
+    # Batch insert all records at once
+    print(f"📦 Adding {len(translation_pairs)} translation pairs...")
+    db.session.bulk_save_objects(translation_pairs)
     db.session.commit()
     print("✅ Translations seeded.")
+
+def seed_from_csv_fast(file_path):
+    """Ultra-fast seeding using raw SQL for maximum performance."""
+    import pandas as pd
+    from sqlalchemy import text
+    
+    df = pd.read_csv(file_path)
+    df.columns = ['source_text', 'target_text']
+
+    source_lang_id = get_or_create_language('English')
+    target_lang_id = get_or_create_language('Medumba')
+
+    # Get reviewer user ids
+    reviewer_role = Role.query.filter_by(name='reviewer').first()
+    reviewers = User.query.filter_by(role_id=reviewer_role.id).all() if reviewer_role else []
+    reviewer_ids = [user.id for user in reviewers]
+
+    status = 'approved'
+    
+    print(f"🚀 Ultra-fast seeding of {len(df)} translation pairs...")
+    
+    # Prepare data for bulk insert
+    values = []
+    for _, row in df.iterrows():
+        reviewer_id = random.choice(reviewer_ids) if reviewer_ids else None
+        values.append(f"('{row['source_text'].replace("'", "''")}', '{row['target_text'].replace("'", "''")}', {source_lang_id}, {target_lang_id}, NULL, '{status}', {reviewer_id if reviewer_id else 'NULL'})")
+    
+    # Use raw SQL for maximum speed
+    sql = f"""
+    INSERT INTO translation_pair (source_text, target_text, source_lang_id, target_lang_id, domain, status, reviewer_id)
+    VALUES {','.join(values)}
+    """
+    
+    db.session.execute(text(sql))
+    db.session.commit()
+    print("✅ Ultra-fast translations seeding completed!")
 
 if __name__ == '__main__':
     with app.app_context():
@@ -137,5 +186,6 @@ if __name__ == '__main__':
         clear_database()
         create_users()
         seed_languages()
-        seed_from_csv('files/Sample_Translation.csv')
+        # Use the ultra-fast method for large datasets
+        seed_from_csv_fast('files/Sample_Translation.csv')
         print("🎉 Seeding completed successfully!")

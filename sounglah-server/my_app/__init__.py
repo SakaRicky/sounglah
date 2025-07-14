@@ -23,9 +23,38 @@ def create_app(config_object=None):
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
     if app.config['SQLALCHEMY_DATABASE_URI'] is None:
         raise ValueError("DATABASE_URL environment variable is not set!")
+    
+    # Log database connection info
+    db_uri = app.config['SQLALCHEMY_DATABASE_URI']
+    # Mask password for security
+    if '@' in db_uri:
+        parts = db_uri.split('@')
+        if ':' in parts[0]:
+            protocol_user_pass = parts[0].split(':')
+            if len(protocol_user_pass) >= 3:
+                # Format: postgresql://user:password@host:port/database
+                masked_uri = f"{protocol_user_pass[0]}:{protocol_user_pass[1]}:***@{parts[1]}"
+                logger.info(f"Connecting to database: {masked_uri}")
+            else:
+                logger.info(f"Connecting to database: {db_uri}")
+        else:
+            logger.info(f"Connecting to database: {db_uri}")
+    else:
+        logger.info(f"Connecting to database: {db_uri}")
+    
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     db.init_app(app)
     migrate = Migrate(app, db)
+    
+    # Test database connection
+    with app.app_context():
+        try:
+            from sqlalchemy import text
+            db.session.execute(text("SELECT 1"))
+            logger.info("✅ Database connection successful!")
+        except Exception as e:
+            logger.error(f"❌ Database connection failed: {e}")
+            raise
     CORS(app, origins="*")
 
     # Model loading
@@ -52,13 +81,14 @@ def create_app(config_object=None):
 
     # Register Blueprints
     from .resources.translations import translations_bp
-    from .resources.users import users_bp
+    from .resources.users import users_bp, roles_bp
     from .resources.auth import auth_bp
     from .resources.languages import languages_bp
     from .resources.detectlang import detectlang_bp
     from .resources.translate import translate_bp
     app.register_blueprint(translations_bp)
     app.register_blueprint(users_bp)
+    app.register_blueprint(roles_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(languages_bp)
     app.register_blueprint(detectlang_bp)

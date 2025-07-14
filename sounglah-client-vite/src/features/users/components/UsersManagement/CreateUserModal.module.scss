@@ -1,0 +1,78 @@
+@use "@/styles/colors" as *;
+@use "@/styles/breakpoints" as *;
+
+.modalHeader {
+  background: $color-brown-5;
+  color: $color-beige-0;
+  padding: 1.5rem 2rem;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.modalTitle {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: 'Georgia, serif';
+}
+
+.content {
+  padding: 2rem;
+  background: $color-beige-0;
+}
+
+.textField {
+  width: 100%;
+  
+  .MuiOutlinedInput-root {
+    background: $color-beige-2;
+    border-radius: 8px;
+    font-family: 'Georgia, serif';
+    
+    &:hover .MuiOutlinedInput-notchedOutline {
+      border-color: $color-brown-4;
+    }
+    
+    &.Mui-focused .MuiOutlinedInput-notchedOutline {
+      border-color: $color-brown-5;
+    }
+  }
+  
+  .MuiInputLabel-root {
+    font-family: 'Georgia, serif';
+    color: $color-brown-7;
+    
+    &.Mui-focused {
+      color: $color-brown-5;
+    }
+  }
+}
+
+.label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: $color-brown-7;
+  font-family: 'Georgia, serif';
+  font-size: 16px;
+}
+
+.select {
+  width: 100%;
+}
+
+.errorText {
+  color: $color-red-4;
+  font-weight: 600;
+  font-family: 'Georgia, serif';
+  margin-top: 8px;
+}
+
+.actions {
+  padding: 1.5rem 2rem;
+  background: $color-beige-1;
+  border-top: 1px solid $color-brown-3;
+  gap: 12px;
+} 

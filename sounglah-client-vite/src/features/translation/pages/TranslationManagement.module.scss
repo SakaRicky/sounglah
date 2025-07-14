@@ -1,12 +1,18 @@
 @use "@/styles/colors" as *;
 @use "@/styles/breakpoints" as *;
 
+$color-yellow-warm: #fde642;
+
 .pageBg {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding-bottom: 56px; // for pattern bar
+
+  @media (max-width: 768px) {
+    padding-bottom: 160px; // Extra space for floating buttons
+  }
 }
 
 .header {
@@ -152,7 +158,24 @@
   stroke: $color-gold-4;
 }
 
+.scrollCue {
+  display: none;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 36px;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(to left, rgba(245, 225, 198, 0.95) 80%, rgba(245, 225, 198, 0));
+  z-index: 3;
+
+  @media (max-width: 768px) {
+    display: block;
+  }
+}
+
 .tableContainer {
+  position: relative;
   margin-top: 0.5rem;
 }
 
@@ -235,4 +258,83 @@
   position: sticky;
   top: 0;
   z-index: 2;
+}
+
+// Table header actions - hide on mobile
+.tableHeaderActions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  align-items: center;
+
+  @media (max-width: 768px) {
+    display: none; // Hide on mobile
+  }
+}
+
+// Floating Action Buttons - show only on mobile
+.floatingActionButtons {
+  display: none; // Hidden by default (desktop)
+  position: fixed;
+  bottom: 80px; // Above the pattern bar
+  right: 20px;
+  z-index: 1000;
+  flex-direction: column;
+  gap: 16px;
+
+  @media (max-width: 768px) {
+    display: flex; // Show on mobile
+  }
+}
+
+.fab {
+  transition: all 0.3s ease !important;
+
+  &:hover {
+    transform: scale(1.1) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  &:active {
+    transform: scale(0.95) !important;
+  }
+} 
+
+.segmentedControl {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  background: #fff4e5;
+  border-radius: 999px;
+  box-shadow: 0 2px 12px rgba(251, 140, 0, 0.08);
+  border: 2px solid #4e3b2a;
+  padding: 4px 8px;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.segmentedButton {
+  font-family: 'Georgia', serif;
+  font-weight: 600;
+  font-size: 1.08rem;
+  color: #4e3b2a;
+  border-radius: 999px !important;
+  padding: 7px 22px;
+  border: none;
+  background: transparent;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+  box-shadow: none;
+  letter-spacing: 0.01em;
+  text-transform: none;
+
+  &.Mui-selected {
+    background: linear-gradient(90deg, $color-orange-4 60%, $color-yellow-warm 100%);
+    color: $color-brown-5 !important;
+    box-shadow: 0 2px 8px rgba(251, 140, 0, 0.13);
+  }
+  &:hover {
+    background: $color-yellow-warm;
+    color: $color-orange-4;
+  }
 } 

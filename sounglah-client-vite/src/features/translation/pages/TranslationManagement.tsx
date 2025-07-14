@@ -11,6 +11,8 @@ import { getUsers } from '../api/users';
 import { CreateTranslationModal } from '../components/TranslationManagement/CreateTranslationModal';
 import { TranslationFilters } from '../components/TranslationManagement/TranslationFilters';
 import { CSVUploadModal } from '../components/TranslationManagement/CSVUploadModal';
+import { UsersManagement } from '../../users/pages/UsersManagement';
+import { LanguageManagement } from './LanguageManagement';
 import CircularProgress from '@mui/material/CircularProgress';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -28,6 +30,21 @@ import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import { FilterChips } from '../components/FilterChips';
 import { AnimatePresence, motion } from 'framer-motion';
 import IconButton from '@mui/material/IconButton';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import FormGroup from '@mui/material/FormGroup';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Checkbox from '@mui/material/Checkbox';
+// import { MdTranslate } from 'react-icons/md';
+// import { FaGlobeAmericas } from 'react-icons/fa';
+import { PiUserSoundDuotone } from 'react-icons/pi';
+import { TbLanguageKatakana } from "react-icons/tb";
+import { FaLanguage } from "react-icons/fa";
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import CancelIcon from '@mui/icons-material/Cancel';
+
 
 type TranslationQueryParams = {
   source_lang?: string;
@@ -82,6 +99,7 @@ export default function TranslationManagement() {
   // Bulk action processing state
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [selectedTable, setSelectedTable] = useState<'translations' | 'users' | 'languages'>('translations');
 
   // Selection state management (replaced by hook)
   const {
@@ -255,7 +273,13 @@ export default function TranslationManagement() {
     fetchReviewers();
   }, [notify]);
 
-  const getStatusBadge = useCallback((status: string) => {
+  const getStatusBadge = useCallback((status: string, isMobile?: boolean) => {
+    if (isMobile) {
+      if (status === 'approved') return <CheckCircleIcon style={{ color: '#388e3c', fontSize: 22 }} titleAccess="Approved" />;
+      if (status === 'pending') return <HourglassEmptyIcon style={{ color: '#fbc02d', fontSize: 22 }} titleAccess="Pending" />;
+      if (status === 'rejected') return <CancelIcon style={{ color: '#d32f2f', fontSize: 22 }} titleAccess="Rejected" />;
+      return <HourglassEmptyIcon style={{ color: '#bdbdbd', fontSize: 22 }} titleAccess={status} />;
+    }
     if (status === 'approved') return (
       <Badge style={{ background: '#388e3c', color: '#fff', fontWeight: 600, letterSpacing: 0.5, borderRadius: 8, padding: '0.3em 1.1em' }}>Approved</Badge>
     );
@@ -620,7 +644,7 @@ export default function TranslationManagement() {
     handleApprove,
     handleDeny,
     actionsHeader: (
-      <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', alignItems: 'center' }}>
+      <div className={classes.tableHeaderActions}>
         <Tooltip title="Add Translation">
           <span>
             <IconButton
@@ -671,11 +695,62 @@ export default function TranslationManagement() {
     ),
   });
 
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [showScrollCue, setShowScrollCue] = useState(false);
+
+  useEffect(() => {
+    if (!isMobile) {
+      setShowScrollCue(false);
+      return;
+    }
+    const checkScroll = () => {
+      const el = tableContainerRef.current;
+      if (el) {
+        setShowScrollCue(el.scrollWidth > el.clientWidth + 8);
+      }
+    };
+    checkScroll();
+    window.addEventListener('resize', checkScroll);
+    return () => window.removeEventListener('resize', checkScroll);
+  }, [isMobile, translations]);
+
   return (
     <div className={classes.pageBg + ' translation-management-mobile-wrap'}>
-      <div className={classes.header}>
-        <h1 id="translation-management-title">Translation Management</h1>
+      <div className={classes.segmentedControl}>
+        <ToggleButtonGroup
+          value={selectedTable}
+          exclusive
+          onChange={(_e, val) => val && setSelectedTable(val)}
+          aria-label="Table selector"
+          size="small"
+        >
+          <ToggleButton value="translations" aria-label="Translations" className={classes.segmentedButton}>
+            <TbLanguageKatakana style={{ marginRight: 8, fontSize: 20, verticalAlign: 'middle' }} />
+            Translations
+          </ToggleButton>
+          <ToggleButton value="users" aria-label="Users" className={classes.segmentedButton}>
+            <PiUserSoundDuotone style={{ marginRight: 8, fontSize: 20, verticalAlign: 'middle' }} />
+            Users
+          </ToggleButton>
+          <ToggleButton value="languages" aria-label="Languages" className={classes.segmentedButton}>
+            <FaLanguage style={{ marginRight: 8, fontSize: 20, verticalAlign: 'middle' }} />
+            Languages
+          </ToggleButton>
+        </ToggleButtonGroup>
       </div>
+      {/* Only render the selected table */}
+      {selectedTable === 'translations' && (
+        <div className={classes.header}>
+          <h1 id="translation-management-title">Translation Management</h1>
+        </div>
+      )}
+      {selectedTable === 'users' && (
+        <UsersManagement />
+      )}
+      {selectedTable === 'languages' && (
+        <LanguageManagement />
+      )}
       <CreateTranslationModal
         opened={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -688,196 +763,207 @@ export default function TranslationManagement() {
         opened={csvModalOpen}
         onClose={() => setCsvModalOpen(false)}
       />
-      <div className={classes.centerContainer + ' translation-management-center-mobile'}>
-        <div>
-          <TranslationStats translations={translations} />
-        </div>
-        <div className={classes.filtersAndActionsRow}>
-          <div className={classes.filtersRow}>
-            <div style={{ flex: 1 }}>
-              <div className={classes.toolRow}>
-                <TranslationFilters
-                  languages={languages}
-                  languageFilter={languageFilter}
-                  targetLanguageFilter={targetLanguageFilter}
-                  statusFilter={statusFilter}
-                  startDate={startDate}
-                  endDate={endDate}
-                  onLanguageChange={setLanguageFilterWithLog}
-                  onTargetLanguageChange={setTargetLanguageFilterWithLog}
-                  onStatusChange={setStatusFilterWithLog}
-                  onStartDateChange={setStartDateWithLog}
-                  onEndDateChange={setEndDateWithLog}
-                  statusOptions={STATUS_OPTIONS}
-                />
+      {selectedTable === 'translations' && (
+        <div className={classes.centerContainer + ' translation-management-center-mobile'}>
+          <div>
+            <TranslationStats translations={translations} />
+          </div>
+          <div className={classes.filtersAndActionsRow}>
+            <div className={classes.filtersRow}>
+              <div style={{ flex: 1 }}>
+                <div className={classes.toolRow}>
+                  <TranslationFilters
+                    languages={languages}
+                    languageFilter={languageFilter}
+                    targetLanguageFilter={targetLanguageFilter}
+                    statusFilter={statusFilter}
+                    startDate={startDate}
+                    endDate={endDate}
+                    onLanguageChange={setLanguageFilterWithLog}
+                    onTargetLanguageChange={setTargetLanguageFilterWithLog}
+                    onStatusChange={setStatusFilterWithLog}
+                    onStartDateChange={setStartDateWithLog}
+                    onEndDateChange={setEndDateWithLog}
+                    statusOptions={STATUS_OPTIONS}
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <FilterChips
-            statusFilter={statusFilter}
-            languageFilter={languageFilter}
-            targetLanguageFilter={targetLanguageFilter}
-            reviewerFilter={reviewerFilter}
-            startDate={startDate}
-            endDate={endDate}
-            onRemove={handleRemoveFilter}
-            onClearAll={handleClearAllFilters}
-          />
-        <div className={classes.tableContainer + ' translation-management-table-mobile'} style={{ position: 'relative', overflowX: 'auto' }}>
-          <SounglahTable
-            columns={translationTableColumns}
-            data={translations}
-            getRowKey={(row) => row.id}
-            tableClassName={classes.table}
-            containerClassName={classes.tableContainer}
-            pagination
-            rowsPerPageOptions={[5, 10, 25, 50, 100]}
-            defaultRowsPerPage={25}
-            dense={true}
-            page={page}
-            rowsPerPage={rowsPerPage}
-            totalCount={totalCount}
-            onPageChange={setPage}
-            onRowsPerPageChange={(n) => { setRowsPerPage(n); setPage(0); }}
-            ariaLabel="Translation management table"
-            emptyMessage="No translations found. Use the filters above to adjust your search or add new translations."
-            footerLeftContent={selectedIds.size > 0 ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0 0 0 8px' }}>
-                <Tooltip title="Bulk Approve Selected">
-                  <span>
-                    <SounglahButton
-                      variant="primary"
-                      onClick={handleBulkApprove}
-                      style={{ minWidth: 0, padding: '2px 8px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}
-                      aria-label="Bulk approve selected translations"
-                    >
-                      <ThumbUpAltIcon style={{ fontSize: 18, marginRight: 4 }} /> Bulk Approve
-                    </SounglahButton>
-                  </span>
-                </Tooltip>
-                <Tooltip title="Bulk Reject Selected">
-                  <span>
-                    <SounglahButton
-                      variant="secondary"
-                      onClick={handleBulkReject}
-                      style={{ minWidth: 0, padding: '2px 8px', fontSize: 13, color: '#d32f2f', borderColor: '#d32f2f', display: 'flex', alignItems: 'center', gap: 4 }}
-                      aria-label="Bulk reject selected translations"
-                    >
-                      <ThumbDownAltIcon style={{ fontSize: 18, marginRight: 4 }} /> Bulk Reject
-                    </SounglahButton>
-                  </span>
-                </Tooltip>
-              </div>
-            ) : (
-              <div style={{ padding: '10px 0 10px 12px', display: 'flex', alignItems: 'center' }}>
-                <Tooltip title="Export translations as CSV">
-                  <span>
-                    <SounglahButton
-                      variant="primary"
-                      onClick={handleExport}
-                      style={{
-                        minWidth: 0,
-                        width: 48,
-                        height: 48,
-                        borderRadius: '50%',
-                        padding: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                      aria-label="Export translations as CSV"
-                      disabled={exporting}
-                    >
-                      <CloudDownloadIcon style={{ fontSize: 28, margin: 0 }} />
-                    </SounglahButton>
-                  </span>
-                </Tooltip>
-              </div>
-            )}
-          />
-          <AnimatePresence>
-            {loading && (
-              <motion.div
-                key="loading-overlay"
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ duration: 0.32, ease: 'easeOut' }}
-                aria-live="polite"
-                aria-atomic="true"
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  background: 'rgba(255, 239, 214, 0.85)', // sand/beige with opacity
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 20,
-                  borderRadius: 14,
-                  boxShadow: '0 4px 24px rgba(78, 59, 42, 0.10)',
-                  border: '2px solid #D2BFA1',
-                }}
-              >
-                <motion.div
-                  initial={{ scale: 0.92, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.92, opacity: 0 }}
-                  transition={{ duration: 0.32, ease: 'easeOut' }}
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+          <FilterChips
+              statusFilter={statusFilter}
+              languageFilter={languageFilter}
+              targetLanguageFilter={targetLanguageFilter}
+              reviewerFilter={reviewerFilter}
+              startDate={startDate}
+              endDate={endDate}
+              onRemove={handleRemoveFilter}
+              onClearAll={handleClearAllFilters}
+            />
+          <div className={classes.tableContainer + ' translation-management-table-mobile'} style={{ position: 'relative', overflowX: 'auto' }} ref={tableContainerRef}>
+            {showScrollCue && <div className={classes.scrollCue} />}
+            <SounglahTable
+              columns={translationTableColumns}
+              data={translations}
+              getRowKey={(row) => row.id}
+              tableClassName={classes.table}
+              containerClassName={classes.tableContainer}
+              pagination
+              rowsPerPageOptions={[5, 10, 25, 50, 100]}
+              defaultRowsPerPage={25}
+              dense={true}
+              page={page}
+              rowsPerPage={rowsPerPage}
+              totalCount={totalCount}
+              onPageChange={setPage}
+              onRowsPerPageChange={(n) => { setRowsPerPage(n); setPage(0); }}
+              ariaLabel="Translation management table"
+              emptyMessage="No translations found. Use the filters above to adjust your search or add new translations."
+              footerLeftContent={selectedIds.size > 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0 0 0 8px' }}>
+                  <Tooltip title="Bulk Approve Selected">
+                    <span>
+                      <SounglahButton
+                        variant="primary"
+                        onClick={handleBulkApprove}
+                        style={{ minWidth: 0, padding: '2px 8px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}
+                        aria-label="Bulk approve selected translations"
+                      >
+                        <ThumbUpAltIcon style={{ fontSize: 18, marginRight: 4 }} /> Bulk Approve
+                      </SounglahButton>
+                    </span>
+                  </Tooltip>
+                  <Tooltip title="Bulk Reject Selected">
+                    <span>
+                      <SounglahButton
+                        variant="secondary"
+                        onClick={handleBulkReject}
+                        style={{ minWidth: 0, padding: '2px 8px', fontSize: 13, color: '#d32f2f', borderColor: '#d32f2f', display: 'flex', alignItems: 'center', gap: 4 }}
+                        aria-label="Bulk reject selected translations"
+                      >
+                        <ThumbDownAltIcon style={{ fontSize: 18, marginRight: 4 }} /> Bulk Reject
+                      </SounglahButton>
+                    </span>
+                  </Tooltip>
+                </div>
+              ) : (
+                <div style={{ padding: '10px 0 10px 12px', display: 'flex', alignItems: 'center' }}>
+                  <Tooltip title="Export translations as CSV">
+                    <span>
+                      <SounglahButton
+                        variant="primary"
+                        onClick={handleExport}
+                        style={{
+                          minWidth: 0,
+                          width: 48,
+                          height: 48,
+                          borderRadius: '50%',
+                          padding: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        aria-label="Export translations as CSV"
+                        disabled={exporting}
+                      >
+                        <CloudDownloadIcon style={{ fontSize: 28, margin: 0 }} />
+                      </SounglahButton>
+                    </span>
+                  </Tooltip>
+                </div>
+              )}
+            />
+            {/* Floating Action Buttons - Mobile Only */}
+            <div className={classes.floatingActionButtons}>
+              <Tooltip title="Add Translation" placement="left">
+                <IconButton
+                  onClick={handleAddClick}
+                  size="large"
+                  aria-label="Add Translation"
+                  className={classes.fab}
+                  style={{
+                    backgroundColor: '#fb8c00',
+                    color: '#fff',
+                    width: 56,
+                    height: 56,
+                    boxShadow: '0 4px 12px rgba(251, 140, 0, 0.3)',
+                  }}
                 >
-                  <CircularProgress size={48} thickness={4.5} style={{ color: '#fb8c00', marginBottom: 18 }} aria-label="Loading translations" />
-                  <div style={{ color: '#4e3b2a', fontFamily: 'Georgia, serif', fontWeight: 600, fontSize: 18, marginTop: 4 }}>
-                    Loading translations...
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-        {/* Bulk Action Confirmation Dialog (unchanged) */}
-        <BulkConfirmDialog
-          open={bulkDialogOpen}
-          actionType={bulkAction || 'approve'}
-          count={selectedIds.size}
-          onCancel={handleBulkDialogClose}
-          onConfirm={handleBulkConfirm}
-          processing={bulkProcessing}
-        />
-        {/* Hidden descriptions for screen readers */}
-        <div id="add-translation-description" className="sr-only">
-          Opens a modal to manually add a new translation pair.
-        </div>
-        <div id="upload-csv-description" className="sr-only">
-          Opens a modal to upload a CSV file containing multiple translation pairs.
-        </div>
-        {/* Error announcement for screen readers */}
-        {announceError && error && (
-          <div
-            aria-live="assertive"
-            aria-atomic="true"
-            className="sr-only"
-            onAnimationEnd={() => setAnnounceError(false)}
-          >
-            Error: {error}
-          </div>
-        )}
+                  <AddCircleOutlineIcon style={{ fontSize: 32 }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Upload CSV" placement="left">
+                <IconButton
+                  onClick={() => setCsvModalOpen(true)}
+                  size="large"
+                  aria-label="Upload CSV"
+                  className={classes.fab}
+                  style={{
+                    backgroundColor: '#078930',
+                    color: '#fff',
+                    width: 56,
+                    height: 56,
+                    boxShadow: '0 4px 12px rgba(7, 137, 48, 0.3)',
+                  }}
+                >
+                  <CloudUploadIcon style={{ fontSize: 32 }} />
+                </IconButton>
+              </Tooltip>
+            </div>
 
-        {/* Selection announcement for screen readers */}
-        {selectedIds.size > 0 && (
-          <div
-            aria-live="polite"
-            aria-atomic="true"
-            className="sr-only"
-          >
-            {selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''} selected
+            <AnimatePresence>
+              {loading && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(255,255,255,0.7)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <CircularProgress size={48} color="primary" />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-        )}
-      </div>
+          {/* Bulk Action Confirmation Dialog (unchanged) */}
+          <BulkConfirmDialog
+            open={bulkDialogOpen}
+            actionType={bulkAction || 'approve'}
+            count={selectedIds.size}
+            onCancel={handleBulkDialogClose}
+            onConfirm={handleBulkConfirm}
+            processing={bulkProcessing}
+          />
+          {/* Hidden descriptions for screen readers */}
+          <div id="add-translation-description" className="sr-only">
+            Opens a modal to manually add a new translation pair.
+          </div>
+          <div id="upload-csv-description" className="sr-only">
+            Opens a modal to upload a CSV file containing multiple translation pairs.
+          </div>
+          {/* Error announcement for screen readers */}
+          {announceError && error && (
+            <div
+              aria-live="assertive"
+              aria-atomic="true"
+              className="sr-only"
+              onAnimationEnd={() => setAnnounceError(false)}
+            >
+              Error: {error}
+            </div>
+          )}
+
+          {/* Selection announcement for screen readers */}
+          {selectedIds.size > 0 && (
+            <div
+              aria-live="polite"
+              aria-atomic="true"
+              className="sr-only"
+            >
+              {selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''} selected
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 } 

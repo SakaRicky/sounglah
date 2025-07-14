@@ -10,12 +10,12 @@ JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-pro
 JWT_ALGORITHM = 'HS256'
 JWT_EXPIRATION_HOURS = 24
 
-def generate_token(user_id, username, role):
-    """Generate a JWT token for a user"""
+def generate_token(user_id, username, role_name):
+    """Generate a JWT token for a user. Expects role_name as a string."""
     payload = {
         'user_id': user_id,
         'username': username,
-        'role': role,
+        'role': role_name,
         'exp': datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS),
         'iat': datetime.utcnow()
     }
