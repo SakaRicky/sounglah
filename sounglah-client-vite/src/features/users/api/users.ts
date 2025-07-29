@@ -1,5 +1,4 @@
 import api from '@/api/axios';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export interface User {
   id: number;
@@ -62,56 +61,42 @@ export const getUsers = async (role?: string): Promise<UsersResponse> => {
 
 // Create a new user
 export const createUser = async (userData: CreateUserRequest): Promise<CreateUserResponse> => {
-  const token = localStorage.getItem('token');
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const response = await api.post(`${API_BASE_URL}/users`, userData, { headers });
+  const response = await api.post('/users', userData);
   return response.data;
 };
 
 // Update an existing user
 export const updateUser = async (userId: number, userData: UpdateUserRequest): Promise<UpdateUserResponse> => {
-  const token = localStorage.getItem('token');
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const response = await api.put(`${API_BASE_URL}/users/${userId}`, userData, { headers });
+  const response = await api.put(`/users/${userId}`, userData);
   return response.data;
 };
 
 // Delete a user
 export const deleteUser = async (userId: number): Promise<{ message: string; deleted_user: { id: number; username: string } }> => {
-  const token = localStorage.getItem('token');
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const response = await api.delete(`${API_BASE_URL}/users/${userId}`, { headers });
+  const response = await api.delete(`/users/${userId}`);
   return response.data;
 };
 
 // Create a new role
 export const createRole = async (role: { name: string; description?: string }) => {
-  const token = localStorage.getItem('token');
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const response = await api.post(`${API_BASE_URL}/roles`, role, { headers });
+  const response = await api.post('/roles', role);
   return response.data;
 };
 
 // Fetch all roles
 export const getRoles = async (): Promise<RolesResponse> => {
-  const token = localStorage.getItem('token');
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const response = await api.get(`${API_BASE_URL}/roles/list`, { headers });
+  const response = await api.get('/roles/list');
   return response.data;
 };
 
 // Update a role
 export const updateRole = async (roleId: number, data: { name: string; description?: string }) => {
-  const token = localStorage.getItem('token');
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const response = await api.put(`${API_BASE_URL}/roles/${roleId}`, data, { headers });
+  const response = await api.put(`/roles/${roleId}`, data);
   return response.data;
 };
 
 // Delete a role
 export const deleteRole = async (roleId: number) => {
-  const token = localStorage.getItem('token');
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const response = await api.delete(`${API_BASE_URL}/roles/${roleId}`, { headers });
+  const response = await api.delete(`/roles/${roleId}`);
   return response.data;
 }; 
