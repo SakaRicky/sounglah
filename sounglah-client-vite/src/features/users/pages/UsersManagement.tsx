@@ -3,8 +3,9 @@ import { SounglahTable } from '@/components/atoms/Table';
 import { getUserTableColumns } from '../components/UsersManagement/userTableColumns';
 import { CreateUserModal } from '../components/UsersManagement/CreateUserModal';
 import { EditUserModal } from '../components/UsersManagement/EditUserModal';
+import { DeleteConfirmationModal } from '@/components/atoms/DeleteConfirmationModal';
 import { UserCardList } from '../components/UsersManagement/UserCardList';
-import { getUsers } from '../api/users';
+import { getUsers, deleteUser } from '../api/users';
 import type { User } from '../api/users';
 import classes from './UsersManagement.module.scss';
 import { useNotification } from '@/contexts/NotificationContext';
@@ -17,6 +18,7 @@ import { LoadingSpinner } from '@/components/atoms/LoadingSpinner';
 import { useState as useStateAlias } from 'react';
 import { RoleManagementDrawer } from '../components/UsersManagement/RoleManagementDrawer';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import { AxiosError } from 'axios';
 
 export const UsersManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -25,6 +27,9 @@ export const UsersManagement: React.FC = () => {
   const [createModalOpened, setCreateModalOpened] = useState(false);
   const [editModalOpened, setEditModalOpened] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [deleteModalOpened, setDeleteModalOpened] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [roleModalOpened, setRoleModalOpened] = useStateAlias(false);
   const notify = useNotification();
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -88,15 +93,67 @@ export const UsersManagement: React.FC = () => {
   }, []);
 
   const handleDeleteClick = useCallback((user: User) => {
-    if (window.confirm(`Are you sure you want to delete user "${user.username}"?`)) {
-      // TODO: Implement delete user API call
+    setUserToDelete(user);
+    setDeleteModalOpened(true);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!userToDelete) return;
+
+    setDeleteLoading(true);
+    try {
+      await deleteUser(userToDelete.id);
+      
       notify.notify({
-        type: 'info',
-        title: 'Delete User',
-        detail: 'Delete user functionality will be implemented in the next phase.'
+        type: 'success',
+        title: 'User Deleted',
+        detail: `User "${userToDelete.username}" has been deleted successfully.`
       });
+      
+      // Refresh the user list
+      fetchUsers();
+      
+      // Remove from selected IDs if it was selected
+      setSelectedIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(userToDelete.id);
+        return newSet;
+      });
+      
+      // Close the modal
+      setDeleteModalOpened(false);
+      setUserToDelete(null);
+      
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+      
+      let errorMessage = 'Failed to delete user. Please try again.';
+      
+      if (error instanceof AxiosError) {
+        if (error.response?.status === 400) {
+          errorMessage = error.response.data.error || 'Cannot delete this user.';
+        } else if (error.response?.status === 404) {
+          errorMessage = 'User not found.';
+        } else if (error.response?.data?.error) {
+          errorMessage = error.response.data.error;
+        }
+      }
+      
+      notify.notify({
+        type: 'error',
+        title: 'Failed to Delete User',
+        detail: errorMessage
+      });
+    } finally {
+      setDeleteLoading(false);
     }
-  }, [notify]);
+  }, [userToDelete, notify, fetchUsers]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setDeleteModalOpened(false);
+    setUserToDelete(null);
+    setDeleteLoading(false);
+  }, []);
 
   const handleCreateSuccess = useCallback(() => {
     fetchUsers();
@@ -265,6 +322,18 @@ export const UsersManagement: React.FC = () => {
             onClose={handleCloseEditModal}
             onSuccess={handleEditSuccess}
             user={selectedUser}
+          />
+        )}
+        {deleteModalOpened && userToDelete && (
+          <DeleteConfirmationModal
+            opened={deleteModalOpened}
+            onClose={handleDeleteCancel}
+            onConfirm={handleDeleteConfirm}
+            title="Delete User"
+            message="Are you sure you want to delete this user?"
+            itemName={userToDelete.username}
+            itemType="user"
+            loading={deleteLoading}
           />
         )}
         <RoleManagementDrawer open={roleModalOpened} onClose={() => setRoleModalOpened(false)} />

@@ -76,6 +76,14 @@ export const updateUser = async (userId: number, userData: UpdateUserRequest): P
   return response.data;
 };
 
+// Delete a user
+export const deleteUser = async (userId: number): Promise<{ message: string; deleted_user: { id: number; username: string } }> => {
+  const token = localStorage.getItem('token');
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await api.delete(`${API_BASE_URL}/users/${userId}`, { headers });
+  return response.data;
+};
+
 // Create a new role
 export const createRole = async (role: { name: string; description?: string }) => {
   const token = localStorage.getItem('token');

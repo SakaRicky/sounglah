@@ -86,7 +86,7 @@ class CreateUserResource(Resource):
             return {'error': 'Failed to create user'}, 500
 
 @api.route('/<int:user_id>')
-class UpdateUserResource(Resource):
+class UpdateDeleteUserResource(Resource):
     @token_required
     def put(self, user_id):
         user = User.query.get(user_id)
@@ -145,6 +145,37 @@ class UpdateUserResource(Resource):
         except Exception as e:
             db.session.rollback()
             return {'error': 'Failed to update user'}, 500
+
+    @token_required
+    def delete(self, user_id):
+        user = User.query.get(user_id)
+        if not user:
+            return {'error': 'User not found'}, 404
+        
+        try:
+            # Prevent deletion of the last admin user
+            if user.role and user.role.name == 'admin':
+                admin_count = User.query.join(Role).filter(Role.name == 'admin').count()
+                if admin_count <= 1:
+                    return {'error': 'Cannot delete the last admin user'}, 400
+            
+            # Store user info for response
+            username = user.username
+            
+            db.session.delete(user)
+            db.session.commit()
+            
+            return {
+                'message': 'User deleted successfully',
+                'deleted_user': {
+                    'id': user_id,
+                    'username': username
+                }
+            }
+            
+        except Exception as e:
+            db.session.rollback()
+            return {'error': 'Failed to delete user'}, 500
 
 roles_bp = Blueprint('roles', __name__, url_prefix='/api/roles')
 roles_api = Api(roles_bp)

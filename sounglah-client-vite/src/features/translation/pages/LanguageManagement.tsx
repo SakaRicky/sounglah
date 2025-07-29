@@ -4,6 +4,7 @@ import { getLanguageTableColumns } from '../components/LanguageManagement/langua
 import { CreateLanguageModal } from '../components/LanguageManagement/CreateLanguageModal';
 import { EditLanguageModal } from '../components/LanguageManagement/EditLanguageModal';
 import { LanguageCardList } from '../components/LanguageManagement/LanguageCardList';
+import { DeleteConfirmationModal } from '@/components/atoms/DeleteConfirmationModal';
 import { getLanguages, deleteLanguage } from '../api/languages';
 import type { Language } from '../api/languages';
 import classes from './LanguageManagement.module.scss';
@@ -14,6 +15,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { SounglahButton } from '@/components/atoms/SounglahButton/SounglahButton';
 import { LoadingSpinner } from '@/components/atoms/LoadingSpinner';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import { AxiosError } from 'axios';
 
 export const LanguageManagement: React.FC = () => {
   const [languages, setLanguages] = useState<Language[]>([]);
@@ -22,6 +24,9 @@ export const LanguageManagement: React.FC = () => {
   const [createModalOpened, setCreateModalOpened] = useState(false);
   const [editModalOpened, setEditModalOpened] = useState(false);
   const [editLanguage, setEditLanguage] = useState<Language | null>(null);
+  const [deleteModalOpened, setDeleteModalOpened] = useState(false);
+  const [languageToDelete, setLanguageToDelete] = useState<Language | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const notify = useNotification();
   const isMobile = useMediaQuery('(max-width: 768px)');
 
@@ -83,29 +88,67 @@ export const LanguageManagement: React.FC = () => {
   }, []);
 
   const handleDeleteClick = useCallback((language: Language) => {
-    if (window.confirm(`Are you sure you want to delete language "${language.name}"?`)) {
-      deleteLanguage(language.id)
-        .then(() => {
-          fetchLanguages();
-          notify.notify({
-            type: 'success',
-            title: 'Language Deleted',
-            detail: `Language "${language.name}" has been deleted successfully.`
-          });
-        })
-        .catch((error) => {
-          let errorMsg = 'Could not delete language.';
-          if (error?.response?.data?.error) {
-            errorMsg = error.response.data.error;
-          }
-          notify.notify({
-            type: 'error',
-            title: 'Failed to Delete Language',
-            detail: errorMsg
-          });
-        });
+    setLanguageToDelete(language);
+    setDeleteModalOpened(true);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!languageToDelete) return;
+
+    setDeleteLoading(true);
+    try {
+      await deleteLanguage(languageToDelete.id);
+      
+      notify.notify({
+        type: 'success',
+        title: 'Language Deleted',
+        detail: `Language "${languageToDelete.name}" has been deleted successfully.`
+      });
+      
+      // Refresh the language list
+      fetchLanguages();
+      
+      // Remove from selected IDs if it was selected
+      setSelectedIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(languageToDelete.id);
+        return newSet;
+      });
+      
+      // Close the modal
+      setDeleteModalOpened(false);
+      setLanguageToDelete(null);
+      
+    } catch (error) {
+      console.error('Failed to delete language:', error);
+      
+      let errorMessage = 'Failed to delete language. Please try again.';
+      
+      if (error instanceof AxiosError) {
+        if (error.response?.status === 400) {
+          errorMessage = error.response.data.error || 'Cannot delete this language.';
+        } else if (error.response?.status === 404) {
+          errorMessage = 'Language not found.';
+        } else if (error.response?.data?.error) {
+          errorMessage = error.response.data.error;
+        }
+      }
+      
+      notify.notify({
+        type: 'error',
+        title: 'Failed to Delete Language',
+        detail: errorMessage
+      });
+    } finally {
+      setDeleteLoading(false);
     }
-  }, [fetchLanguages, notify]);
+  }, [languageToDelete, notify, fetchLanguages]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setDeleteModalOpened(false);
+    setLanguageToDelete(null);
+    setDeleteLoading(false);
+  }, []);
 
   const handleCreateSuccess = useCallback(() => {
     fetchLanguages();
@@ -247,6 +290,18 @@ export const LanguageManagement: React.FC = () => {
             onClose={handleCloseEditModal}
             onSuccess={handleCreateSuccess}
             language={editLanguage}
+          />
+        )}
+        {deleteModalOpened && languageToDelete && (
+          <DeleteConfirmationModal
+            opened={deleteModalOpened}
+            onClose={handleDeleteCancel}
+            onConfirm={handleDeleteConfirm}
+            title="Delete Language"
+            message="Are you sure you want to delete this language?"
+            itemName={languageToDelete.name}
+            itemType="language"
+            loading={deleteLoading}
           />
         )}
       </AnimatePresence>
