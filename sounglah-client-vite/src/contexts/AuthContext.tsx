@@ -1,10 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import type { ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login as apiLogin, validateToken as apiValidateToken } from '@/api/auth';
-import type { LoginResponse } from '@/api/auth';
 import type { AxiosError } from 'axios';
-import { useNotification } from './NotificationContext';
 
 interface User {
   id: number;
@@ -14,12 +11,12 @@ interface User {
 }
 
 interface AuthContextType {
-  user: User | null;
   token: string | null;
+  user: User | null;
+  loading: boolean;
+  isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
-  isAuthenticated: boolean;
-  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,77 +29,48 @@ export const useAuth = () => {
   return context;
 };
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-// Inner component that uses useNavigate (must be inside Router)
-const AuthProviderInner: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { notify } = useNotification();
-  const validationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Function to validate token using the API
-  const validateToken = useCallback(async (): Promise<boolean> => {
-    try {
-      await apiValidateToken();
-      return true;
-    } catch (error) {
-      const axiosError = error as AxiosError;
-      if (axiosError.response?.status === 401) {
-        return false;
-      }
-      // For other errors, we'll assume the token is still valid
-      return true;
-    }
-  }, []);
-
-  // Function to handle token expiration
   const handleTokenExpiration = useCallback(() => {
-    console.log('Token expired, logging out user');
-    setToken(null);
-    setUser(null);
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
-    
-    // Clear validation interval
-    if (validationIntervalRef.current) {
-      clearInterval(validationIntervalRef.current);
-      validationIntervalRef.current = null;
-    }
-    
-    // Show notification to user
-    notify({
-      type: 'warning',
-      title: 'Session Expired',
-      detail: 'Your session has expired. Please log in again to continue.',
-      duration: 5000
-    });
-    
-    // Redirect to login page
-    navigate('/login', { replace: true });
-  }, [navigate, notify]);
+    setToken(null);
+    setUser(null);
+    setLoading(false);
+  }, []);
 
-  // Function to start periodic token validation
-  const startTokenValidation = useCallback(() => {
-    // Clear any existing interval
-    if (validationIntervalRef.current) {
-      clearInterval(validationIntervalRef.current);
+  const validateToken = useCallback(async () => {
+    const savedToken = localStorage.getItem('authToken');
+    if (!savedToken) {
+      setToken(null);
+      setUser(null);
+      setLoading(false);
+      return;
     }
-    
-    // Check token every 5 minutes
-    validationIntervalRef.current = setInterval(async () => {
-      if (token) {
-        const isValid = await validateToken();
-        if (!isValid) {
-          handleTokenExpiration();
-        }
+
+    try {
+      const response = await apiValidateToken();
+      if (response.valid) {
+        setToken(savedToken);
+        setUser(response.user);
+      } else {
+        handleTokenExpiration();
       }
-    }, 5 * 60 * 1000); // 5 minutes
-  }, [token, validateToken, handleTokenExpiration]);
+    } catch {
+      handleTokenExpiration();
+    }
+  }, [handleTokenExpiration]);
+
+  const startTokenValidation = useCallback(() => {
+    if (token) {
+      const interval = setInterval(validateToken, 5 * 60 * 1000); // Check every 5 minutes
+      return () => clearInterval(interval);
+    }
+  }, [token, validateToken]);
 
   useEffect(() => {
     // Check for existing token on app load
@@ -112,27 +80,11 @@ const AuthProviderInner: React.FC<AuthProviderProps> = ({ children }) => {
     if (savedToken && savedUser) {
       try {
         const userData = JSON.parse(savedUser);
-        
-        // Validate the token
-        validateToken().then((isValid) => {
-          if (isValid) {
-            setToken(savedToken);
-            setUser(userData);
-            // Start periodic validation
-            startTokenValidation();
-          } else {
-            // Token is invalid, clear storage
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('user');
-            notify({
-              type: 'warning',
-              title: 'Session Expired',
-              detail: 'Your previous session has expired. Please log in again.',
-              duration: 5000
-            });
-          }
-          setLoading(false);
-        });
+        setToken(savedToken);
+        setUser(userData);
+        setLoading(false);
+        // Start periodic validation
+        startTokenValidation();
       } catch (error) {
         console.error('Error parsing saved user data:', error);
         localStorage.removeItem('authToken');
@@ -142,7 +94,7 @@ const AuthProviderInner: React.FC<AuthProviderProps> = ({ children }) => {
     } else {
       setLoading(false);
     }
-  }, [validateToken, startTokenValidation, notify]);
+  }, [startTokenValidation]);
 
   // Listen for token expiration events from API calls
   useEffect(() => {
@@ -150,31 +102,19 @@ const AuthProviderInner: React.FC<AuthProviderProps> = ({ children }) => {
       handleTokenExpiration();
     };
 
-    // Listen for the custom token expired event
     window.addEventListener('tokenExpired', handleTokenExpired);
-
-    // Cleanup event listener
-    return () => {
-      window.removeEventListener('tokenExpired', handleTokenExpired);
-    };
+    return () => window.removeEventListener('tokenExpired', handleTokenExpired);
   }, [handleTokenExpiration]);
 
-  // Cleanup interval on unmount
-  useEffect(() => {
-    return () => {
-      if (validationIntervalRef.current) {
-        clearInterval(validationIntervalRef.current);
-      }
-    };
-  }, []);
-
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const login = useCallback(async (username: string, password: string): Promise<boolean> => {
     try {
-      const data: LoginResponse = await apiLogin(username, password);
+      const data = await apiLogin(username, password);
+      
       setToken(data.token);
       setUser(data.user);
       localStorage.setItem('authToken', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
+      setLoading(false);
       
       // Start periodic validation after successful login
       startTokenValidation();
@@ -189,40 +129,25 @@ const AuthProviderInner: React.FC<AuthProviderProps> = ({ children }) => {
       }
       return false;
     }
-  };
+  }, [startTokenValidation]);
 
-  const logout = () => {
-    setToken(null);
-    setUser(null);
+  const logout = useCallback(() => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
-    
-    // Clear validation interval
-    if (validationIntervalRef.current) {
-      clearInterval(validationIntervalRef.current);
-      validationIntervalRef.current = null;
-    }
-    
-    navigate('/login', { replace: true });
-  };
+    setToken(null);
+    setUser(null);
+    setLoading(false);
+    navigate('/login');
+  }, [navigate]);
 
   const value: AuthContextType = {
-    user,
     token,
+    user,
+    loading,
+    isAuthenticated: !!token, // Determine if authenticated based on token existence
     login,
     logout,
-    isAuthenticated: !!token,
-    loading,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-// Main AuthProvider component that doesn't use Router hooks
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  return <AuthProviderInner>{children}</AuthProviderInner>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }; 

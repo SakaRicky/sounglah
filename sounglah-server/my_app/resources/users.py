@@ -33,6 +33,7 @@ class ListUsersResource(Resource):
         }
 
 @api.route('/')
+@api.route('')  # Handle both /api/users and /api/users/
 class CreateUserResource(Resource):
     @token_required
     def post(self):
@@ -47,7 +48,25 @@ class CreateUserResource(Resource):
         username = data['username'].strip()
         email = data['email'].strip().lower()
         password = data['password']
-        role_name = data.get('role', 'editor')
+        
+        # Handle role assignment - support both 'role' (string) and 'role_id' (number)
+        role_obj = None
+        if 'role_id' in data and data['role_id']:
+            # Frontend sends role_id as number
+            role_obj = Role.query.get(data['role_id'])
+            if not role_obj:
+                return {'error': f'Role with ID {data["role_id"]} does not exist'}, 400
+        elif 'role' in data and data['role']:
+            # Backend expects role as string
+            role_name = data['role']
+            role_obj = Role.query.filter_by(name=role_name).first()
+            if not role_obj:
+                return {'error': f'Role {role_name} does not exist'}, 400
+        else:
+            # Default to 'editor' role if no role specified
+            role_obj = Role.query.filter_by(name='editor').first()
+            if not role_obj:
+                return {'error': 'Default editor role does not exist'}, 400
         
         # Validate username and email uniqueness
         if User.query.filter_by(username=username).first():
@@ -61,9 +80,6 @@ class CreateUserResource(Resource):
         
         # Create user
         try:
-            role_obj = Role.query.filter_by(name=role_name).first()
-            if not role_obj:
-                return {'error': f'Role {role_name} does not exist'}, 400
             user = User(
                 username=username,
                 email=email,

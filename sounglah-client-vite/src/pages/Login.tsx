@@ -24,13 +24,14 @@ export default function Login() {
 
     try {
       const success = await login(username, password);
+      
       if (success) {
         navigate(from, { replace: true });
       } else {
         setError('Invalid username or password');
       }
     } catch (err) {
-      console.log("🚀 ~ handleSubmit ~ err:", err)
+      console.log("🚀 ~ handleSubmit ~ err:", err);
       setError('An error occurred during login');
     } finally {
       setLoading(false);

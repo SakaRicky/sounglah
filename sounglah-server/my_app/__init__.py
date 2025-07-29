@@ -55,8 +55,33 @@ def create_app(config_object=None):
         except Exception as e:
             logger.error(f"❌ Database connection failed: {e}")
             raise
-    CORS(app, origins="*")
-
+    
+    # Configure CORS to allow Authorization headers
+    CORS(app, 
+         origins="*",
+         allow_headers=["Content-Type", "Authorization"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         supports_credentials=True)
+    
+    # Add explicit CORS headers for preflight requests
+    @app.after_request
+    def after_request(response):
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    
+    # Handle OPTIONS preflight requests
+    @app.route('/api/<path:path>', methods=['OPTIONS'])
+    def handle_options(path):
+        response = app.make_default_options_response()
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response
+    
     # Model loading
     global tokenizer_instance, model_instance, models_loaded_successfully
     tokenizer_instance, model_instance = model_loader.load_models()
