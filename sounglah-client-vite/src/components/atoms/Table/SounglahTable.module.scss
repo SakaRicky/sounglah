@@ -121,7 +121,7 @@
   }
 }
 
-@media (max-width: 700px) {
+@media (max-width: $breakpoint-sm) {
 
   .table th,
   .table td {

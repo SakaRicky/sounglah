@@ -19,6 +19,8 @@ export function getUserTableColumns({
   handleEditClick,
   handleDeleteClick,
   actionsHeader,
+  isMobile = false,
+  isMediumScreen = false,
 }: {
   selectedIds: Set<number>;
   handleSelectRow: (id: number, checked: boolean) => void;
@@ -28,9 +30,12 @@ export function getUserTableColumns({
   handleEditClick: (row: User) => void;
   handleDeleteClick: (row: User) => void;
   actionsHeader?: React.ReactNode;
+  isMobile?: boolean;
+  isMediumScreen?: boolean;
 }): SounglahTableColumn<User>[] {
-  // Responsive: hide columns on mobile
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  // Hide Email and Created At on mobile and medium screens
+  const shouldHideEmail = isMobile;
+  const shouldHideCreatedAt = isMobile || isMediumScreen;
 
   return [
     {
@@ -70,28 +75,44 @@ export function getUserTableColumns({
       ),
     },
     {
-      label: <><PersonIcon style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4, color: 'var(--mantine-color-brown-6)' }} /> Username</>,
+      label: 'Username',
       accessor: 'username',
+      headerRender: () => (
+        <><PersonIcon style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4, color: 'var(--mantine-color-brown-6)' }} /> Username</>
+      ),
       render: (row: User) => (
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 6,
+          fontSize: '1rem',
+          fontWeight: 500
+        }}>
           <PersonIcon style={{ fontSize: 18, color: 'var(--mantine-color-brown-6)' }} />
           {row.username}
         </span>
       ),
     },
-    {
-      label: <><EmailIcon style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4, color: 'var(--mantine-color-brown-6)' }} /> Email</>,
+    // Hide Email column on mobile and medium screens
+    ...(!shouldHideEmail ? [{
+      label: 'Email',
       accessor: 'email',
+      headerRender: () => (
+        <><EmailIcon style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4, color: 'var(--mantine-color-brown-6)' }} /> Email</>
+      ),
       render: (row: User) => (
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <EmailIcon style={{ fontSize: 18, color: 'var(--mantine-color-brown-6)' }} />
           {row.email}
         </span>
       ),
-    },
+    }] : []),
     {
-      label: <><SecurityIcon style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4, color: 'var(--mantine-color-brown-6)' }} /> Role</>,
+      label: 'Role',
       accessor: 'role',
+      headerRender: () => (
+        <><SecurityIcon style={{ fontSize: 18, verticalAlign: 'middle', marginRight: 4, color: 'var(--mantine-color-brown-6)' }} /> Role</>
+      ),
       render: (row: User) => {
         let icon = <PersonIcon style={{ fontSize: 18, color: 'var(--mantine-color-brown-6)' }} />;
         if (row.role.toLowerCase() === 'admin') icon = <SecurityIcon style={{ fontSize: 18, color: '#d32f2f' }} />;
@@ -99,17 +120,28 @@ export function getUserTableColumns({
         else if (row.role.toLowerCase() === 'viewer') icon = <VisibilityIcon style={{ fontSize: 18, color: 'var(--mantine-color-brown-6)' }} />;
         else if (row.role.toLowerCase() === 'reviewer') icon = <PersonIcon style={{ fontSize: 18, color: 'var(--mantine-color-green-7)' }} />;
         return (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, textTransform: 'capitalize', color: row.role === 'admin' ? '#d32f2f' : 'var(--mantine-color-brown-7)' }}>
+          <span style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 6, 
+            fontWeight: 600, 
+            textTransform: 'capitalize', 
+            color: row.role === 'admin' ? '#d32f2f' : 'var(--mantine-color-brown-7)',
+            fontSize: '1rem'
+          }}>
             {icon}
             {row.role}
           </span>
         );
       },
     },
-    // Hide Created At on mobile
-    ...(!isMobile ? [{
-      label: <><CalendarTodayIcon style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4, color: 'var(--mantine-color-brown-6)' }} /> Created At</>,
+    // Hide Created At on mobile and medium screens
+    ...(!shouldHideCreatedAt ? [{
+      label: 'Created At',
       accessor: 'created_at',
+      headerRender: () => (
+        <><CalendarTodayIcon style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4, color: 'var(--mantine-color-brown-6)' }} /> Created At</>
+      ),
       render: (row: User) => (
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <CalendarTodayIcon style={{ fontSize: 16, color: 'var(--mantine-color-brown-6)' }} />
@@ -122,13 +154,21 @@ export function getUserTableColumns({
       accessor: 'actions',
       headerRender: actionsHeader ? () => actionsHeader : () => null,
       render: (row) => (
-        <span style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+        <span style={{ 
+          display: 'flex', 
+          gap: '0.2rem', 
+          alignItems: 'center' 
+        }}>
           <Tooltip title={`Edit user ${row.username}`}>
             <span>
               <IconButton
                 onClick={() => handleEditClick(row)}
                 size="small"
-                style={{ color: 'var(--mantine-color-brown-1)' }}
+                style={{ 
+                  color: 'var(--mantine-color-brown-1)',
+                  width: 32,
+                  height: 32
+                }}
                 aria-label={`Edit user ${row.username}`}
               >
                 <EditIcon style={{ fontSize: 18 }} />
@@ -140,7 +180,11 @@ export function getUserTableColumns({
               <IconButton
                 onClick={() => handleDeleteClick(row)}
                 size="small"
-                style={{ color: 'var(--mantine-color-red-5)' }}
+                style={{ 
+                  color: 'var(--mantine-color-red-5)',
+                  width: 32,
+                  height: 32
+                }}
                 aria-label={`Delete user ${row.username}`}
               >
                 <DeleteIcon style={{ fontSize: 18 }} />

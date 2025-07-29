@@ -3,6 +3,7 @@ import { SounglahTable } from '@/components/atoms/Table';
 import { getLanguageTableColumns } from '../components/LanguageManagement/languageTableColumns';
 import { CreateLanguageModal } from '../components/LanguageManagement/CreateLanguageModal';
 import { EditLanguageModal } from '../components/LanguageManagement/EditLanguageModal';
+import { LanguageCardList } from '../components/LanguageManagement/LanguageCardList';
 import { getLanguages, deleteLanguage } from '../api/languages';
 import type { Language } from '../api/languages';
 import classes from './LanguageManagement.module.scss';
@@ -12,6 +13,7 @@ import LanguageIcon from '@mui/icons-material/Language';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SounglahButton } from '@/components/atoms/SounglahButton/SounglahButton';
 import { LoadingSpinner } from '@/components/atoms/LoadingSpinner';
+import useMediaQuery from '@mui/material/useMediaQuery';
 
 export const LanguageManagement: React.FC = () => {
   const [languages, setLanguages] = useState<Language[]>([]);
@@ -21,6 +23,7 @@ export const LanguageManagement: React.FC = () => {
   const [editModalOpened, setEditModalOpened] = useState(false);
   const [editLanguage, setEditLanguage] = useState<Language | null>(null);
   const notify = useNotification();
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   // Fetch languages
   const fetchLanguages = useCallback(async () => {
@@ -173,7 +176,7 @@ export const LanguageManagement: React.FC = () => {
         </p>
       </motion.div>
 
-      {/* Add Language Button */}
+      {/* Add Language Button (desktop only, hidden on mobile by SCSS) */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
         <SounglahButton
           variant="primary"
@@ -192,14 +195,42 @@ export const LanguageManagement: React.FC = () => {
         transition={{ duration: 0.5, delay: 0.1 }}
         className={classes.content}
       >
-        <SounglahTable
-          columns={languageTableColumns}
-          data={languages}
-          getRowKey={(language) => language.id}
-          pagination={false}
-          ariaLabel="Languages table"
-          emptyMessage="No languages found."
-        />
+        {/* Render table on desktop, cards on mobile */}
+        {!isMobile ? (
+          <SounglahTable
+            columns={languageTableColumns}
+            data={languages}
+            getRowKey={(language) => language.id}
+            pagination={false}
+            ariaLabel="Languages table"
+            emptyMessage="No languages found."
+          />
+        ) : (
+          <LanguageCardList
+            languages={languages}
+            selectedIds={selectedIds}
+            onSelectLanguage={handleSelectRow}
+            onEditLanguage={handleEditClick}
+            onDeleteLanguage={handleDeleteClick}
+          />
+        )}
+        
+        {/* Floating Action Buttons - Mobile Only */}
+        {isMobile && (
+          <div className={classes.floatingActionButtons}>
+            <Tooltip title="Add Language" placement="left">
+              <IconButton
+                onClick={() => setCreateModalOpened(true)}
+                size="large"
+                aria-label="Add Language"
+                className={classes.fab}
+                style={{ backgroundColor: '#fb8c00', color: '#fff', width: 56, height: 56, boxShadow: '0 4px 12px rgba(251, 140, 0, 0.3)' }}
+              >
+                <LanguageIcon style={{ fontSize: 32 }} />
+              </IconButton>
+            </Tooltip>
+          </div>
+        )}
       </motion.div>
 
       <AnimatePresence>

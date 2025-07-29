@@ -1,0 +1,139 @@
+@use "@/styles/colors" as *;
+@use "@/styles/breakpoints" as *;
+
+.userCard {
+  margin-bottom: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba($color-brown-5, 0.1);
+  border: 1px solid $color-brown-2;
+  background: $color-beige-0;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    box-shadow: 0 4px 12px rgba($color-brown-5, 0.15);
+    transform: translateY(-1px);
+  }
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.cardContent {
+  padding: 1rem !important;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.userDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.username {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  
+  span {
+    font-weight: 600;
+    color: $color-brown-8;
+    font-family: 'Georgia, serif';
+  }
+}
+
+.userIcon {
+  color: $color-brown-6;
+  font-size: 20px;
+}
+
+.role {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  
+  span {
+    font-weight: 500;
+    color: $color-brown-7;
+    font-family: 'Georgia, serif';
+    text-transform: capitalize;
+  }
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.editButton {
+  color: $color-brown-1;
+  background: rgba($color-brown-4, 0.1);
+  border-radius: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  
+  &:hover {
+    background: rgba($color-brown-4, 0.2);
+    transform: scale(1.05);
+  }
+}
+
+.deleteButton {
+  color: $color-red-5;
+  background: rgba($color-red-5, 0.1);
+  border-radius: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  
+  &:hover {
+    background: rgba($color-red-5, 0.2);
+    transform: scale(1.05);
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 480px) {
+  .cardContent {
+    padding: 0.75rem !important;
+  }
+  
+  .cardHeader {
+    gap: 0.75rem;
+  }
+  
+  .userInfo {
+    gap: 0.5rem;
+  }
+  
+  .username span {
+    font-size: 1rem;
+  }
+  
+  .role span {
+    font-size: 0.9rem;
+  }
+  
+  .actions {
+    gap: 0.25rem;
+  }
+  
+  .editButton,
+  .deleteButton {
+    min-width: 40px;
+    min-height: 40px;
+  }
+} 

@@ -46,6 +46,68 @@
   gap: 8px;
 }
 
+// Floating Action Buttons - show only on mobile
+.floatingActionButtons {
+  display: none;
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  z-index: 1000;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fab {
+  transition: all 0.3s ease !important;
+  &:hover {
+    transform: scale(1.1) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3) !important;
+  }
+  &:active {
+    transform: scale(0.95) !important;
+  }
+}
+
+// Responsive breakpoints
+@media (max-width: 768px) {
+  .container {
+    padding: 0.5rem;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 90%;
+    box-sizing: border-box;
+  }
+  
+  .content {
+    margin: 0 auto;
+    box-sizing: border-box;
+    padding: 1rem;
+    border-radius: 12px;
+    overflow-x: visible;
+    min-width: auto;
+    width: 100%;
+    
+    // Hide table elements on mobile
+    .tableContainer {
+      display: none;
+    }
+    
+    th, td {
+      display: none;
+    }
+  }
+  
+  .floatingActionButtons {
+    display: flex;
+  }
+  
+  .tableHeaderActions {
+    display: none;
+  }
+}
+
 @media (max-width: $breakpoint-md) {
   .container {
     padding: 1rem;
