@@ -1,0 +1,102 @@
+@use "@/styles/colors" as *;
+@use "@/styles/breakpoints" as *;
+
+.dialogTitle {
+  color: $color-brown-8;
+  font-family: 'Georgia, serif';
+  font-weight: 600;
+  font-size: 1.5rem;
+  text-align: center;
+  padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+  border-bottom: 1px solid $color-brown-2;
+  margin-bottom: 0;
+}
+
+.dialogContent {
+  padding: 1.5rem;
+  min-height: 300px;
+}
+
+.dialogActions {
+  padding: 1rem 1.5rem 1.5rem 1.5rem;
+  gap: 1rem;
+  border-top: 1px solid $color-brown-2;
+  margin-top: 0;
+}
+
+.textField {
+  margin-bottom: 1rem;
+  
+  .MuiOutlinedInput-root {
+    border-radius: 8px;
+    
+    &:hover .MuiOutlinedInput-notchedOutline {
+      border-color: $color-brown-4;
+    }
+    
+    &.Mui-focused .MuiOutlinedInput-notchedOutline {
+      border-color: $color-brown-6;
+    }
+  }
+  
+  .MuiInputLabel-root {
+    color: $color-brown-6;
+    font-family: 'Georgia, serif';
+    
+    &.Mui-focused {
+      color: $color-brown-6;
+    }
+  }
+  
+  .MuiInputBase-input {
+    font-family: 'Georgia, serif';
+    color: $color-brown-8;
+  }
+  
+  .MuiFormHelperText-root {
+    font-family: 'Georgia, serif';
+    font-size: 0.85rem;
+    
+    &.Mui-error {
+      color: $color-red-6;
+    }
+  }
+}
+
+.selectField {
+  margin-bottom: 1rem;
+}
+
+.errorMessage {
+  background: rgba($color-red-5, 0.1);
+  border: 1px solid $color-red-4;
+  color: $color-red-7;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-family: 'Georgia, serif';
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+// Responsive adjustments
+@media (max-width: $breakpoint-sm) {
+  .dialogTitle {
+    font-size: 1.25rem;
+    padding: 1rem 1rem 0.5rem 1rem;
+  }
+  
+  .dialogContent {
+    padding: 1rem;
+    min-height: 250px;
+  }
+  
+  .dialogActions {
+    padding: 0.75rem 1rem 1rem 1rem;
+    flex-direction: column;
+    
+    button {
+      width: 100%;
+    }
+  }
+} 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { SounglahTable } from '@/components/atoms/Table';
 import { getUserTableColumns } from '../components/UsersManagement/userTableColumns';
 import { CreateUserModal } from '../components/UsersManagement/CreateUserModal';
+import { EditUserModal } from '../components/UsersManagement/EditUserModal';
 import { UserCardList } from '../components/UsersManagement/UserCardList';
 import { getUsers } from '../api/users';
 import type { User } from '../api/users';
@@ -22,6 +23,8 @@ export const UsersManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [createModalOpened, setCreateModalOpened] = useState(false);
+  const [editModalOpened, setEditModalOpened] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [roleModalOpened, setRoleModalOpened] = useStateAlias(false);
   const notify = useNotification();
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -80,14 +83,9 @@ export const UsersManagement: React.FC = () => {
 
   // Action handlers
   const handleEditClick = useCallback((user: User) => {
-    console.log("🚀 ~ handleEditClick ~ user:", user)
-    // TODO: Implement edit user functionality
-    notify.notify({
-      type: 'info',
-      title: 'Edit User',
-      detail: 'Edit user functionality will be implemented in the next phase.'
-    });
-  }, [notify]);
+    setSelectedUser(user);
+    setEditModalOpened(true);
+  }, []);
 
   const handleDeleteClick = useCallback((user: User) => {
     if (window.confirm(`Are you sure you want to delete user "${user.username}"?`)) {
@@ -104,8 +102,17 @@ export const UsersManagement: React.FC = () => {
     fetchUsers();
   }, [fetchUsers]);
 
-  const handleCloseModal = useCallback(() => {
+  const handleEditSuccess = useCallback(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const handleCloseCreateModal = useCallback(() => {
     setCreateModalOpened(false);
+  }, []);
+
+  const handleCloseEditModal = useCallback(() => {
+    setEditModalOpened(false);
+    setSelectedUser(null);
   }, []);
 
   // Table columns
@@ -176,6 +183,19 @@ export const UsersManagement: React.FC = () => {
         </div>
       </motion.div>
 
+      {/* Add User Button (desktop only, hidden on mobile by SCSS) */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
+        <SounglahButton
+          variant="primary"
+          onClick={() => setCreateModalOpened(true)}
+          style={{ minWidth: 140, fontWeight: 600, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}
+          aria-label="Add new user"
+        >
+          <PersonAddIcon style={{ fontSize: 22 }} />
+          Add User
+        </SounglahButton>
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -235,8 +255,16 @@ export const UsersManagement: React.FC = () => {
         {createModalOpened && (
           <CreateUserModal
             opened={createModalOpened}
-            onClose={handleCloseModal}
+            onClose={handleCloseCreateModal}
             onSuccess={handleCreateSuccess}
+          />
+        )}
+        {editModalOpened && selectedUser && (
+          <EditUserModal
+            opened={editModalOpened}
+            onClose={handleCloseEditModal}
+            onSuccess={handleEditSuccess}
+            user={selectedUser}
           />
         )}
         <RoleManagementDrawer open={roleModalOpened} onClose={() => setRoleModalOpened(false)} />

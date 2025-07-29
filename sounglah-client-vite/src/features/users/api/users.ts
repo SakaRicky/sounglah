@@ -16,7 +16,22 @@ export interface CreateUserRequest {
   role_id: number;
 }
 
+export interface UpdateUserRequest {
+  username?: string;
+  email?: string;
+  password?: string;
+  role_id?: number;
+}
+
 export interface CreateUserResponse {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  created_at: string;
+}
+
+export interface UpdateUserResponse {
   id: number;
   username: string;
   email: string;
@@ -50,6 +65,14 @@ export const createUser = async (userData: CreateUserRequest): Promise<CreateUse
   const token = localStorage.getItem('token');
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
   const response = await api.post(`${API_BASE_URL}/users`, userData, { headers });
+  return response.data;
+};
+
+// Update an existing user
+export const updateUser = async (userId: number, userData: UpdateUserRequest): Promise<UpdateUserResponse> => {
+  const token = localStorage.getItem('token');
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await api.put(`${API_BASE_URL}/users/${userId}`, userData, { headers });
   return response.data;
 };
 

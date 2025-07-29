@@ -80,28 +80,32 @@
 }
 
 .editButton {
-  color: $color-brown-1;
-  background: rgba($color-brown-4, 0.1);
-  border-radius: 8px;
-  min-width: 44px;
-  min-height: 44px;
+  color: #1976d2 !important; // Vibrant blue color
+  background: rgba(25, 118, 210, 0.1) !important; // Blue background with opacity
+  border-radius: 8px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  transition: all 0.2s ease !important;
   
   &:hover {
-    background: rgba($color-brown-4, 0.2);
-    transform: scale(1.05);
+    background: rgba(25, 118, 210, 0.2) !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3) !important;
   }
 }
 
 .deleteButton {
-  color: $color-red-5;
-  background: rgba($color-red-5, 0.1);
-  border-radius: 8px;
-  min-width: 44px;
-  min-height: 44px;
+  color: #d32f2f !important; // Vibrant red color
+  background: rgba(211, 47, 47, 0.1) !important; // Red background with opacity
+  border-radius: 8px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  transition: all 0.2s ease !important;
   
   &:hover {
-    background: rgba($color-red-5, 0.2);
-    transform: scale(1.05);
+    background: rgba(211, 47, 47, 0.2) !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 2px 8px rgba(211, 47, 47, 0.3) !important;
   }
 }
 

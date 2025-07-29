@@ -83,7 +83,68 @@ class CreateUserResource(Resource):
             
         except Exception as e:
             db.session.rollback()
-            return {'error': 'Failed to create user'}, 500 
+            return {'error': 'Failed to create user'}, 500
+
+@api.route('/<int:user_id>')
+class UpdateUserResource(Resource):
+    @token_required
+    def put(self, user_id):
+        user = User.query.get(user_id)
+        if not user:
+            return {'error': 'User not found'}, 404
+        
+        data = request.get_json()
+        
+        try:
+            # Update username if provided
+            if 'username' in data:
+                username = data['username'].strip()
+                if not username:
+                    return {'error': 'Username cannot be empty'}, 400
+                # Check if username already exists (excluding current user)
+                existing_user = User.query.filter_by(username=username).first()
+                if existing_user and existing_user.id != user_id:
+                    return {'error': 'Username already exists'}, 409
+                user.username = username
+            
+            # Update email if provided
+            if 'email' in data:
+                email = data['email'].strip().lower()
+                if not email:
+                    return {'error': 'Email cannot be empty'}, 400
+                # Check if email already exists (excluding current user)
+                existing_user = User.query.filter_by(email=email).first()
+                if existing_user and existing_user.id != user_id:
+                    return {'error': 'Email already exists'}, 409
+                user.email = email
+            
+            # Update password if provided
+            if 'password' in data and data['password']:
+                password = data['password']
+                password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                user.password_hash = password_hash
+            
+            # Update role if provided
+            if 'role_id' in data:
+                role_id = data['role_id']
+                role_obj = Role.query.get(role_id)
+                if not role_obj:
+                    return {'error': 'Role not found'}, 400
+                user.role_id = role_id
+            
+            db.session.commit()
+            
+            return {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'role': user.role.name if user.role else None,
+                'created_at': user.created_at.isoformat() if user.created_at else None
+            }
+            
+        except Exception as e:
+            db.session.rollback()
+            return {'error': 'Failed to update user'}, 500
 
 roles_bp = Blueprint('roles', __name__, url_prefix='/api/roles')
 roles_api = Api(roles_bp)

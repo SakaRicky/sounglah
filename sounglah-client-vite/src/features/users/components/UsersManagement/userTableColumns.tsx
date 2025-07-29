@@ -164,10 +164,18 @@ export function getUserTableColumns({
               <IconButton
                 onClick={() => handleEditClick(row)}
                 size="small"
-                style={{ 
-                  color: 'var(--mantine-color-brown-1)',
+                sx={{ 
+                  color: '#1976d2',
+                  backgroundColor: 'rgba(25, 118, 210, 0.1)',
                   width: 32,
-                  height: 32
+                  height: 32,
+                  borderRadius: '6px',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    backgroundColor: 'rgba(25, 118, 210, 0.2)',
+                    transform: 'scale(1.05)',
+                    boxShadow: '0 2px 8px rgba(25, 118, 210, 0.3)'
+                  }
                 }}
                 aria-label={`Edit user ${row.username}`}
               >
@@ -180,10 +188,18 @@ export function getUserTableColumns({
               <IconButton
                 onClick={() => handleDeleteClick(row)}
                 size="small"
-                style={{ 
-                  color: 'var(--mantine-color-red-5)',
+                sx={{ 
+                  color: '#d32f2f',
+                  backgroundColor: 'rgba(211, 47, 47, 0.1)',
                   width: 32,
-                  height: 32
+                  height: 32,
+                  borderRadius: '6px',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    backgroundColor: 'rgba(211, 47, 47, 0.2)',
+                    transform: 'scale(1.05)',
+                    boxShadow: '0 2px 8px rgba(211, 47, 47, 0.3)'
+                  }
                 }}
                 aria-label={`Delete user ${row.username}`}
               >

@@ -92,7 +92,19 @@ export const getLanguageTableColumns = ({
           <IconButton
             size="small"
             onClick={() => handleEditClick(language)}
-            style={{ color: '#a06a1a' }}
+            sx={{ 
+              color: '#1976d2',
+              backgroundColor: 'rgba(25, 118, 210, 0.1)',
+              width: 32,
+              height: 32,
+              borderRadius: '6px',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                backgroundColor: 'rgba(25, 118, 210, 0.2)',
+                transform: 'scale(1.05)',
+                boxShadow: '0 2px 8px rgba(25, 118, 210, 0.3)'
+              }
+            }}
           >
             <EditIcon style={{ fontSize: 18 }} />
           </IconButton>
@@ -101,7 +113,19 @@ export const getLanguageTableColumns = ({
           <IconButton
             size="small"
             onClick={() => handleDeleteClick(language)}
-            style={{ color: '#d32f2f' }}
+            sx={{ 
+              color: '#d32f2f',
+              backgroundColor: 'rgba(211, 47, 47, 0.1)',
+              width: 32,
+              height: 32,
+              borderRadius: '6px',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                backgroundColor: 'rgba(211, 47, 47, 0.2)',
+                transform: 'scale(1.05)',
+                boxShadow: '0 2px 8px rgba(211, 47, 47, 0.3)'
+              }
+            }}
           >
             <DeleteIcon style={{ fontSize: 18 }} />
           </IconButton>
