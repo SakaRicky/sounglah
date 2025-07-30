@@ -9,7 +9,7 @@ from .. import db
 import csv
 from io import StringIO
 
-translations_bp = Blueprint('translations', __name__, url_prefix='/api/translations')
+translations_bp = Blueprint('translations', __name__)
 api = Api(translations_bp)
 
 @api.route('/list')

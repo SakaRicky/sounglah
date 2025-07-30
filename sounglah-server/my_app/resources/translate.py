@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_restx import Api, Resource
 
-translate_bp = Blueprint('translate', __name__, url_prefix='/api/translate')
+translate_bp = Blueprint('translate', __name__)
 api = Api(translate_bp)
 
 @api.route('/')

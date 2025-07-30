@@ -5,7 +5,7 @@ from .. import db
 from ..jwt_utils import token_required
 import bcrypt
 
-users_bp = Blueprint('users', __name__, url_prefix='/api/users')
+users_bp = Blueprint('users', __name__)
 api = Api(users_bp)
 
 @api.route('/list')
@@ -193,7 +193,7 @@ class UpdateDeleteUserResource(Resource):
             db.session.rollback()
             return {'error': 'Failed to delete user'}, 500
 
-roles_bp = Blueprint('roles', __name__, url_prefix='/api/roles')
+roles_bp = Blueprint('roles', __name__)
 roles_api = Api(roles_bp)
 
 @roles_api.route('/list')

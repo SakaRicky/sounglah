@@ -3,7 +3,7 @@ from flask_restx import Api, Resource
 from ..parsers import detect_lang_args
 import langid
 
-detectlang_bp = Blueprint('detectlang', __name__, url_prefix='/api/detectlang')
+detectlang_bp = Blueprint('detectlang', __name__)
 api = Api(detectlang_bp)
 
 @api.route('/')

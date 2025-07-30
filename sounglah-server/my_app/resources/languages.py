@@ -4,7 +4,7 @@ from ..models import Language
 from ..jwt_utils import token_required
 from .. import db
 
-languages_bp = Blueprint('languages', __name__, url_prefix='/api/languages')
+languages_bp = Blueprint('languages', __name__)
 api = Api(languages_bp)
 
 @api.route('/list')

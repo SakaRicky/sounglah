@@ -4,7 +4,7 @@ from ..models import User, Role
 from ..jwt_utils import generate_token, verify_password, token_required, get_current_user
 from ..parsers import login_args
 
-auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
+auth_bp = Blueprint('auth', __name__)
 api = Api(auth_bp)
 
 @api.route('/login')
