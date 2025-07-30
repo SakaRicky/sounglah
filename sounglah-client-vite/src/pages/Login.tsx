@@ -31,7 +31,7 @@ export default function Login() {
         setError('Invalid username or password');
       }
     } catch (err) {
-      console.log("🚀 ~ handleSubmit ~ err:", err);
+      console.log("🚀 ~ handleSubmit ~ err:", err)
       setError('An error occurred during login');
     } finally {
       setLoading(false);

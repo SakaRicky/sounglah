@@ -12,23 +12,26 @@ import {
   langMap
 } from '@/features/translation/hooks/useTranslationBox';
 import { SourceLanguageCode } from '@/types';
-import { LoadingSpinner } from '@/components/atoms/LoadingSpinner';
+import { ScaleLoader } from 'react-spinners';
 
 export const TranslationBox = () => {
     const [sourceText, setSourceText] = useState<string>("");
     const [fullTranslation, setFullTranslation] = useState<string>("");
     const [noTextError, setNoTextError] = useState(false);
+    const [manualLanguage, setManualLanguage] = useState<SourceLanguageCode | null>(null);
 
     // React Query hooks
     const { data: detectedLangCode } = useLanguageDetection(sourceText);
     const { translateText, isTranslating } = useTranslationState();
 
-    // Map detected language code to SourceLanguageCode
+    // Determine the source language - manual selection takes precedence over auto-detection
     const autoDetectedSourceLanguage: SourceLanguageCode = detectedLangCode ? 
         (langMap[detectedLangCode] || SourceLanguageCode.Undetermined) : 
         SourceLanguageCode.Undetermined;
 
-    const displayedTranslation = useTypeWriter(fullTranslation);
+    const currentSourceLanguage = manualLanguage || autoDetectedSourceLanguage;
+
+    const displayedTranslation = useTypeWriter({ fullTranslatedText: fullTranslation });
 
     const sourceTextChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
         const text = event.target.value;
@@ -36,15 +39,15 @@ export const TranslationBox = () => {
         setNoTextError(false);
     }, []);
 
-    const handleSourceLanguageChange = useCallback(() => {
-        // This would update the detected language if needed
-        // For now, we'll rely on the auto-detection
+    const handleSourceLanguageChange = useCallback((language: SourceLanguageCode) => {
+        setManualLanguage(language);
+        setNoTextError(false);
     }, []);
 
     const fetchTranslation = useCallback(async () => {
         setFullTranslation("");
         
-        if (autoDetectedSourceLanguage === SourceLanguageCode.Undetermined) {
+        if (currentSourceLanguage === SourceLanguageCode.Undetermined) {
             setNoTextError(true);
             return;
         }
@@ -57,7 +60,7 @@ export const TranslationBox = () => {
         setNoTextError(false);
         
         try {
-            const translated = await translateText(autoDetectedSourceLanguage, sourceText);
+            const translated = await translateText(currentSourceLanguage, sourceText);
             
             if (translated !== undefined) {
                 setFullTranslation(translated.fullTranslation.join(" "));
@@ -67,7 +70,24 @@ export const TranslationBox = () => {
             // Show error to user instead of recursive retry
             setNoTextError(true);
         }
-    }, [autoDetectedSourceLanguage, sourceText, translateText]);
+    }, [currentSourceLanguage, sourceText, translateText]);
+
+    // Determine if we should show an error
+    const shouldShowError = noTextError && (
+        sourceText.trim() === "" || 
+        currentSourceLanguage === SourceLanguageCode.Undetermined
+    );
+
+    // Get appropriate error message
+    const getErrorMessage = () => {
+        if (sourceText.trim() === "") {
+            return "Please enter some text";
+        }
+        if (currentSourceLanguage === SourceLanguageCode.Undetermined) {
+            return "Please select a source language or enter text for auto-detection";
+        }
+        return "";
+    };
 
     return (
         <div>
@@ -75,13 +95,19 @@ export const TranslationBox = () => {
                 <InputTextZone
                     sourceLanguageChange={handleSourceLanguageChange}
                     sourceTextChange={sourceTextChange}
-                    noTextError={noTextError}
-                    srcLanguage={autoDetectedSourceLanguage}
+                    noTextError={shouldShowError}
+                    srcLanguage={currentSourceLanguage}
                     sourceText={sourceText}
+                    errorMessage={getErrorMessage()}
                 />
                 {isTranslating ? (
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <LoadingSpinner />
+                    <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'center', 
+                        alignItems: 'center',
+                        padding: '8px'
+                    }}>
+                        <ScaleLoader width="10px" />
                     </div>
                 ) : (
                     <div>
@@ -89,7 +115,7 @@ export const TranslationBox = () => {
                             <AppButton 
                                 variant='primary' 
                                 onClick={fetchTranslation}
-                                disabled={!sourceText.trim() || autoDetectedSourceLanguage === SourceLanguageCode.Undetermined}
+                                disabled={!sourceText.trim() || currentSourceLanguage === SourceLanguageCode.Undetermined}
                             >
                                 Translate
                             </AppButton>
@@ -107,7 +133,7 @@ export const TranslationBox = () => {
                 <AppButton
                     variant='primary'
                     onClick={fetchTranslation}
-                    disabled={!sourceText.trim() || autoDetectedSourceLanguage === SourceLanguageCode.Undetermined}
+                    disabled={!sourceText.trim() || currentSourceLanguage === SourceLanguageCode.Undetermined}
                 >
                     Translate
                 </AppButton>

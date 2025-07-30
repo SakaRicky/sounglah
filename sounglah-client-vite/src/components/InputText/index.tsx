@@ -12,9 +12,10 @@ export interface InputTextZoneProps {
     noTextError?: boolean;
     srcLanguage: string;
     sourceText?: string;
+    errorMessage?: string;
 }
 
-export const InputTextZone = ({ sourceText, noTextError, srcLanguage, sourceLanguageChange, sourceTextChange }: InputTextZoneProps) => {
+export const InputTextZone = ({ sourceText, noTextError, srcLanguage, sourceLanguageChange, sourceTextChange, errorMessage }: InputTextZoneProps) => {
 
     const inputLanguages: Language[] = [
         { value: SourceLanguageCode.Français, label: "French" },
@@ -59,7 +60,7 @@ export const InputTextZone = ({ sourceText, noTextError, srcLanguage, sourceLang
                 />
             </div>
 
-            {noTextError ? <p style={{ color: "red", marginBottom: 0 }}>Please enter some text</p> : ""}
+            {noTextError ? <p style={{ color: "red", marginBottom: 0 }}>{errorMessage || "Please enter some text"}</p> : ""}
 
         </Paper>
     );

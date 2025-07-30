@@ -2,10 +2,6 @@
 import api from "./api/axios";
 import type { SourceLanguageCode } from "./types";
 
-// const baseURL = "http://10.0.0.73:5000/api";
-const baseURL = import.meta.env.VITE_API_BASE_URL || "/api";
-console.log("🚀 ~ baseURL:", baseURL);
-
 export const SUPPORTED_INPUT_LANGUAGES = ['en', 'fr'];
 
 export interface LangDetectResponse {
@@ -23,8 +19,6 @@ export const detectLangFromText = async (textToDetectLang: string): Promise<stri
 		
 		return response.data.language;
 	} catch (error: unknown) {
-		console.log(error);
-
 		throw new Error(`Error in translate ${error}`);
 	}
 };
@@ -57,8 +51,6 @@ export const translate = async ({ srcLanguage, text }: TranslateProps) => {
 
 		return response.data.translate;
 	} catch (error: unknown) {
-		console.log(error);
-
 		throw new Error(`Error in translate ${error}`);
 	}
 };

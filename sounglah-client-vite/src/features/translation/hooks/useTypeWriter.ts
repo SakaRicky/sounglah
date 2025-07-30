@@ -1,112 +1,87 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
-const useTypeWriter = (fullTranslatedText: string) => {
-    const [displayedTranslation, setDisplayedTranslation] = useState<string>("");
+interface UseTypeWriterProps {
+  fullTranslatedText: string;
+  speed?: number;
+  delay?: number;
+}
 
-        const currentIndexRef = useRef(0);
-        const animationFrameIdRef = useRef<number | null>(null);
-        const lastUpdateTimeRef = useRef(0);
-        const fullTextRef = useRef(fullTranslatedText);
-    
-        const CHARS_PER_TICK = 1;
-        const TIME_PER_CHAR_MS = 50;
+export default function useTypeWriter({ 
+  fullTranslatedText, 
+  speed = 50, 
+  delay = 50 
+}: UseTypeWriterProps): string {
+  const [displayedText, setDisplayedText] = useState('');
+  const fullTextRef = useRef(fullTranslatedText);
+  const animationFrameRef = useRef<number | null>(null);
+  const currentIndexRef = useRef(0);
+  const charIndexRef = useRef(0);
 
-    useEffect(() => {
-		// --- Start of Effect for a new fullTranslatedText ---
-		console.log(`EFFECT RUNNING for fullTranslatedText: "${fullTranslatedText}"`);
+  useEffect(() => {
+    fullTextRef.current = fullTranslatedText;
+    setDisplayedText('');
+    currentIndexRef.current = 0;
+    charIndexRef.current = 0;
 
-		fullTextRef.current = fullTranslatedText; // Ensure it's updated if fullTranslatedText itself changes
+    const animate = () => {
+      const fullText = fullTextRef.current;
+      if (!fullText) {
+        if (animationFrameRef.current !== null) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
+        return;
+      }
 
-		// 1. Immediately clear any ongoing animation from a previous fullTranslatedText
-		if (animationFrameIdRef.current !== null) {
-			cancelAnimationFrame(animationFrameIdRef.current);
-			animationFrameIdRef.current = null;
-			console.log("Cancelled previous animation frame");
-		}
+      const words = fullText.split(' ');
+      const currentWord = words[currentIndexRef.current];
+      
+      if (!currentWord) {
+        if (animationFrameRef.current !== null) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
+        return;
+      }
 
-		// 2. Reset state for the new animation sequence
-		setDisplayedTranslation('');
-		currentIndexRef.current = 0;
-		lastUpdateTimeRef.current = 0;
+      if (charIndexRef.current < currentWord.length) {
+        const charToAdd = currentWord[charIndexRef.current];
+        setDisplayedText(prev => {
+          const newText = prev + charToAdd;
+          return newText;
+        });
+        charIndexRef.current++;
+        animationFrameRef.current = requestAnimationFrame(animate);
+      } else {
+        // Move to next word
+        currentIndexRef.current++;
+        charIndexRef.current = 0;
+        
+        if (currentIndexRef.current < words.length) {
+          setDisplayedText(prev => prev + ' ');
+          animationFrameRef.current = requestAnimationFrame(animate);
+        } else {
+          // Animation complete
+          if (animationFrameRef.current !== null) {
+            cancelAnimationFrame(animationFrameRef.current);
+            animationFrameRef.current = null;
+          }
+        }
+      }
+    };
 
-		// 3. Define the animation function for *this* fullTranslatedText
-		const typeCharacter = (timestamp: number) => {
-			// Read from the ref to get the fullTranslatedText relevant to this animation sequence
-			const currentFullText = fullTextRef.current;
+    if (fullTextRef.current && fullTextRef.current.length > 0) {
+      currentIndexRef.current = 0;
+      animationFrameRef.current = requestAnimationFrame(animate);
+    }
 
-			// If fullTranslatedText became empty/null while this animation was scheduled, stop.
-			if (!currentFullText) {
-				if (animationFrameIdRef.current !== null) {
-					cancelAnimationFrame(animationFrameIdRef.current);
-					animationFrameIdRef.current = null;
-				}
-				return;
-			}
+    return () => {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+    };
+  }, [fullTranslatedText, speed, delay]);
 
-			if (!lastUpdateTimeRef.current) {
-				lastUpdateTimeRef.current = timestamp;
-			}
-
-			const elapsed = timestamp - lastUpdateTimeRef.current;
-
-			if (elapsed > TIME_PER_CHAR_MS) {
-				// Check if we are already past the full length
-				if (currentIndexRef.current >= currentFullText.length) {
-					setDisplayedTranslation(currentFullText);
-					if (animationFrameIdRef.current !== null) {
-						cancelAnimationFrame(animationFrameIdRef.current);
-						animationFrameIdRef.current = null;
-					}
-					return;
-				}
-
-				const charToAdd = currentFullText.substring(
-					currentIndexRef.current,
-					currentIndexRef.current + CHARS_PER_TICK
-				);
-
-				currentIndexRef.current += CHARS_PER_TICK; // Increment for the NEXT tick
-
-				setDisplayedTranslation(prevDisplayedText => {
-					// console.log(`prev: "${prevDisplayedText}", adding: "${charToAdd}"`);
-					return prevDisplayedText + charToAdd;
-				});
-
-				lastUpdateTimeRef.current = timestamp;
-			}
-
-			// Schedule next frame if not done
-			if (currentIndexRef.current < currentFullText.length) {
-				animationFrameIdRef.current = requestAnimationFrame(typeCharacter);
-			} else {
-				// Animation is complete
-				setDisplayedTranslation(currentFullText); // Ensure final text is set
-				if (animationFrameIdRef.current !== null) {
-					cancelAnimationFrame(animationFrameIdRef.current);
-					animationFrameIdRef.current = null;
-				}
-			}
-		};
-
-		// 4. Start the animation if fullTranslatedText is present
-		if (fullTextRef.current && fullTextRef.current.length > 0) {
-			console.log(`Starting animation for: "${fullTextRef.current}"`);
-			lastUpdateTimeRef.current = 0;
-			animationFrameIdRef.current = requestAnimationFrame(typeCharacter);
-		} else {
-			setDisplayedTranslation(''); // Ensure display is empty if fullTranslatedText is empty
-		}
-
-		// 5. Cleanup function
-		return () => {
-			if (animationFrameIdRef.current !== null) {
-				cancelAnimationFrame(animationFrameIdRef.current);
-				animationFrameIdRef.current = null;
-			}
-		};
-	}, [fullTranslatedText, CHARS_PER_TICK, TIME_PER_CHAR_MS]);
-
-  return displayedTranslation;
-};
-
-export default useTypeWriter;
+  return displayedText;
+}
