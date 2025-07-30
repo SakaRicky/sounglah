@@ -1,4 +1,4 @@
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -61,25 +61,59 @@ def create_app(config_object=None):
          origins="*",
          allow_headers=["Content-Type", "Authorization"],
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-         supports_credentials=True)
+         supports_credentials=False)  # Changed to False since we're using wildcard origin
     
     # Add explicit CORS headers for preflight requests
     @app.after_request
     def after_request(response):
-        response.headers.add('Access-Control-Allow-Origin', '*')
+        # Allow all origins
+        origin = request.headers.get('Origin')
+        if origin:
+            response.headers.add('Access-Control-Allow-Origin', origin)
+        else:
+            response.headers.add('Access-Control-Allow-Origin', '*')
+        
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        response.headers.add('Access-Control-Allow-Credentials', 'false')  # Changed to false
+        response.headers.add('Access-Control-Max-Age', '86400')  # Cache preflight for 24 hours
         return response
     
     # Handle OPTIONS preflight requests
     @app.route('/api/<path:path>', methods=['OPTIONS'])
     def handle_options(path):
         response = app.make_default_options_response()
-        response.headers.add('Access-Control-Allow-Origin', '*')
+        
+        # Allow all origins
+        origin = request.headers.get('Origin')
+        if origin:
+            response.headers.add('Access-Control-Allow-Origin', origin)
+        else:
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        response.headers.add('Access-Control-Allow-Credentials', 'false')  # Changed to false
+        response.headers.add('Access-Control-Max-Age', '86400')  # Cache preflight for 24 hours
+        return response
+    
+    # Global OPTIONS handler for any other routes
+    @app.route('/', defaults={'path': ''}, methods=['OPTIONS'])
+    @app.route('/<path:path>', methods=['OPTIONS'])
+    def handle_global_options(path):
+        response = app.make_default_options_response()
+        
+        # Allow all origins
+        origin = request.headers.get('Origin')
+        if origin:
+            response.headers.add('Access-Control-Allow-Origin', origin)
+        else:
+            response.headers.add('Access-Control-Allow-Origin', '*')
+            
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'false')
+        response.headers.add('Access-Control-Max-Age', '86400')
         return response
     
     # Model loading

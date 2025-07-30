@@ -213,6 +213,7 @@ class ListRolesResource(Resource):
         }
 
 @roles_api.route('/')
+@roles_api.route('')  # Handle both /api/roles and /api/roles/
 class CreateRoleResource(Resource):
     @token_required
     def post(self):

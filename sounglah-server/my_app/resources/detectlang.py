@@ -7,6 +7,7 @@ detectlang_bp = Blueprint('detectlang', __name__, url_prefix='/api/detectlang')
 api = Api(detectlang_bp)
 
 @api.route('/')
+@api.route('')  # Handle both with and without trailing slash
 class DetectLangResource(Resource):
     def post(self):
         data = request.get_json()

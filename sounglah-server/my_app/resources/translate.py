@@ -5,6 +5,7 @@ translate_bp = Blueprint('translate', __name__, url_prefix='/api/translate')
 api = Api(translate_bp)
 
 @api.route('/')
+@api.route('')  # Handle both with and without trailing slash
 class TranslateResource(Resource):
     def post(self):
         data = request.get_json()
