@@ -3,7 +3,8 @@ import { translate, detectLangFromText, type Translate } from '@/services';
 import { SourceLanguageCode } from '@/types';
 
 // Useful exported types
-export type { Translate, SourceLanguageCode };
+export type { Translate };
+export { SourceLanguageCode };
 
 export interface TranslationRequest {
   srcLanguage: SourceLanguageCode;

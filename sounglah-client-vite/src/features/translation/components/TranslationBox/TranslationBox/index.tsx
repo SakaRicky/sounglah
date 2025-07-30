@@ -9,9 +9,9 @@ import useTypeWriter from '@/features/translation/hooks/useTypeWriter';
 import { 
   useLanguageDetection, 
   useTranslationState, 
-  langMap,
-  type SourceLanguageCode 
+  langMap
 } from '@/features/translation/hooks/useTranslationBox';
+import { SourceLanguageCode } from '@/types';
 import { LoadingSpinner } from '@/components/atoms/LoadingSpinner';
 
 export const TranslationBox = () => {
