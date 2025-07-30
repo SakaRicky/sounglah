@@ -1,14 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login as apiLogin, validateToken as apiValidateToken } from '@/api/auth';
-import type { AxiosError } from 'axios';
-
-interface User {
-  id: number;
-  username: string;
-  email: string;
-  role: string;
-}
+import { useValidateToken, useLogin, useLogout, useAuthState, type User } from '@/features/auth/hooks/useAuth';
 
 interface AuthContextType {
   token: string | null;
@@ -35,66 +27,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // React Query hooks
+  const { getStoredToken, getStoredUser, isAuthenticated: checkAuth, clearAuth } = useAuthState();
+  const loginMutation = useLogin();
+  const logoutMutation = useLogout();
+
+  // Token validation with React Query
+  const { data: validationData, isLoading: isValidating, error: validationError } = useValidateToken(
+    !!getStoredToken() // Only validate if we have a stored token
+  );
+
   const handleTokenExpiration = useCallback(() => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
+    clearAuth();
     setToken(null);
     setUser(null);
     setLoading(false);
-  }, []);
+    navigate('/login');
+  }, [clearAuth, navigate]);
 
-  const validateToken = useCallback(async () => {
-    const savedToken = localStorage.getItem('authToken');
-    if (!savedToken) {
-      setToken(null);
-      setUser(null);
-      setLoading(false);
-      return;
+  // Initialize auth state on mount
+  useEffect(() => {
+    const storedToken = getStoredToken();
+    const storedUser = getStoredUser();
+
+    if (storedToken && storedUser) {
+      setToken(storedToken);
+      setUser(storedUser);
     }
+    
+    setLoading(false);
+  }, [getStoredToken, getStoredUser]);
 
-    try {
-      const response = await apiValidateToken();
-      if (response.valid) {
-        setToken(savedToken);
-        setUser(response.user);
+  // Update state when validation completes
+  useEffect(() => {
+    if (!isValidating && validationData) {
+      if (validationData.valid) {
+        setToken(getStoredToken());
+        setUser(validationData.user);
       } else {
+        // Token is invalid, clear auth
         handleTokenExpiration();
       }
-    } catch {
+    } else if (!isValidating && validationError) {
+      // Validation failed, clear auth
       handleTokenExpiration();
     }
-  }, [handleTokenExpiration]);
-
-  const startTokenValidation = useCallback(() => {
-    if (token) {
-      const interval = setInterval(validateToken, 5 * 60 * 1000); // Check every 5 minutes
-      return () => clearInterval(interval);
-    }
-  }, [token, validateToken]);
-
-  useEffect(() => {
-    // Check for existing token on app load
-    const savedToken = localStorage.getItem('authToken');
-    const savedUser = localStorage.getItem('user');
-    
-    if (savedToken && savedUser) {
-      try {
-        const userData = JSON.parse(savedUser);
-        setToken(savedToken);
-        setUser(userData);
-        setLoading(false);
-        // Start periodic validation
-        startTokenValidation();
-      } catch (error) {
-        console.error('Error parsing saved user data:', error);
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
-        setLoading(false);
-      }
-    } else {
-      setLoading(false);
-    }
-  }, [startTokenValidation]);
+  }, [isValidating, validationData, validationError, getStoredToken, handleTokenExpiration]);
 
   // Listen for token expiration events from API calls
   useEffect(() => {
@@ -108,43 +86,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = useCallback(async (username: string, password: string): Promise<boolean> => {
     try {
-      const data = await apiLogin(username, password);
-      
-      setToken(data.token);
-      setUser(data.user);
-      localStorage.setItem('authToken', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      setLoading(false);
-      
-      // Start periodic validation after successful login
-      startTokenValidation();
-      
+      await loginMutation.mutateAsync({ username, password });
+      navigate('/admin');
       return true;
-    } catch (error: unknown) {
-      const axiosError = error as AxiosError<{ error: string }>;
-      if (axiosError?.response && axiosError.response.data?.error) {
-        console.error('Login failed:', axiosError.response.data.error);
-      } else {
-        console.error('Login error:', error);
-      }
+    } catch (error) {
+      console.error('Login failed:', error);
       return false;
     }
-  }, [startTokenValidation]);
+  }, [loginMutation, navigate]);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-    setToken(null);
-    setUser(null);
-    setLoading(false);
+    logoutMutation.mutate();
     navigate('/login');
-  }, [navigate]);
+  }, [logoutMutation, navigate]);
 
   const value: AuthContextType = {
     token,
     user,
-    loading,
-    isAuthenticated: !!token, // Determine if authenticated based on token existence
+    loading: loading || isValidating,
+    isAuthenticated: checkAuth(),
     login,
     logout,
   };

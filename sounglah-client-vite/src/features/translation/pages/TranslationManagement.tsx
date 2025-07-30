@@ -1,13 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import classes from './TranslationManagement.module.scss';
 import { SounglahTable } from '@/components/atoms/Table';
 import { TranslationStats } from '../components/TranslationManagement/TranslationStats';
-import { getLanguages, getTranslations, updateTranslation, bulkUpdateTranslations } from '../api/translations';
 import type { Language, Translation } from '../api/types';
 import type { User } from '@/types';
 import { Badge } from '@mantine/core';
-import { getUsers } from '../api/users';
 import { CreateTranslationModal } from '../components/TranslationManagement/CreateTranslationModal';
 import { TranslationFilters } from '../components/TranslationManagement/TranslationFilters';
 import { CSVUploadModal } from '../components/TranslationManagement/CSVUploadModal';
@@ -17,7 +15,6 @@ import CircularProgress from '@mui/material/CircularProgress';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { useNotification } from '@/contexts/NotificationContext';
-import { createNetworkError, createServerError } from '@/utils/errorHandling';
 import { SounglahButton } from '@/components/atoms/SounglahButton/SounglahButton';
 import { useUndoHistory } from '../hooks/useUndoHistory';
 import { useBulkSelection } from '../hooks/useBulkSelection';
@@ -39,15 +36,14 @@ import { FaLanguage } from "react-icons/fa";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import CancelIcon from '@mui/icons-material/Cancel';
-
-
-type TranslationQueryParams = {
-  source_lang?: string;
-  target_lang?: string;
-  status?: string;
-  created_at_start?: string;
-  created_at_end?: string;
-};
+import { LoadingSpinner } from '@/components/atoms/LoadingSpinner';
+import { 
+  useTranslations, 
+  useLanguages, 
+  useUsers, 
+  useBulkUpdateTranslations,
+  type TranslationQueryParams 
+} from '../hooks/useTranslations';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Status' },
@@ -56,45 +52,72 @@ const STATUS_OPTIONS = [
   { value: 'rejected', label: 'Rejected' },
 ];
 
-type ErrorResponse = { error?: string };
-
 export default function TranslationManagement() {
-  const [translations, setTranslations] = useState<Translation[]>([]);
-  const [languages, setLanguages] = useState<Language[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [announceError, setAnnounceError] = useState(false);
+  // Filter states
   const [languageFilter, setLanguageFilter] = useState('');
   const [targetLanguageFilter, setTargetLanguageFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  
+  // Debounced filters for API calls
   const [debouncedLanguageFilter, setDebouncedLanguageFilter] = useState('');
   const [debouncedTargetLanguageFilter, setDebouncedTargetLanguageFilter] = useState('');
   const [debouncedStatusFilter, setDebouncedStatusFilter] = useState('');
   const [debouncedStartDate, setDebouncedStartDate] = useState('');
   const [debouncedEndDate, setDebouncedEndDate] = useState('');
+  
+  // Timeout refs for debouncing
   const languageFilterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const targetLanguageFilterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const statusFilterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const startDateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const endDateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [reviewers, setReviewers] = useState<User[]>([]);
+  
+  // Modal states
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [editingTranslation, setEditingTranslation] = useState<Translation | null>(null);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
+  
+  // Pagination states
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [totalCount, setTotalCount] = useState(0);
+  
+  // Other states
   const notify = useNotification();
   const { addAction, popActionById } = useUndoHistory(10);
   const [bulkAction, setBulkAction] = useState<'approve' | 'reject' | null>(null);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
-  // Bulk action processing state
-  const [bulkProcessing, setBulkProcessing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [selectedTable, setSelectedTable] = useState<'translations' | 'users' | 'languages'>('translations');
+
+  // React Query hooks
+  const queryParams: TranslationQueryParams & { page?: number; limit?: number } = useMemo(() => {
+    const params: TranslationQueryParams & { page?: number; limit?: number } = {};
+    if (debouncedLanguageFilter) params.source_lang = debouncedLanguageFilter;
+    if (debouncedTargetLanguageFilter) params.target_lang = debouncedTargetLanguageFilter;
+    if (debouncedStatusFilter) params.status = debouncedStatusFilter;
+    if (debouncedStartDate) params.created_at_start = debouncedStartDate;
+    if (debouncedEndDate) params.created_at_end = debouncedEndDate;
+    params.page = page + 1; // 1-based page for backend
+    params.limit = rowsPerPage;
+    return params;
+  }, [debouncedLanguageFilter, debouncedTargetLanguageFilter, debouncedStatusFilter, debouncedStartDate, debouncedEndDate, page, rowsPerPage]);
+
+  const { 
+    data: translationsData, 
+    isLoading: translationsLoading, 
+    error: translationsError 
+  } = useTranslations(queryParams);
+  
+  const { data: languages = [] } = useLanguages();
+  const { data: reviewers = [] } = useUsers('reviewer');
+  const bulkUpdateMutation = useBulkUpdateTranslations();
+
+  // Extract data from React Query
+  const translations = useMemo(() => translationsData?.translations || [], [translationsData?.translations]);
+  const totalCount = translationsData?.total || 0;
 
   // Selection state management (replaced by hook)
   const {
@@ -160,114 +183,6 @@ export default function TranslationManagement() {
     setDebouncedEndDate(val);
   }, []);
 
-  const fetchLanguages = useCallback(async () => {
-    try {
-      const data = await getLanguages();
-      setLanguages(data.languages);
-    } catch (err) {
-      const appError = createNetworkError(err, { operation: 'fetchLanguages' });
-      setLanguages([]);
-
-      notify.notify({
-        type: 'error',
-        title: 'Failed to Load Languages',
-        detail: appError.userMessage,
-        error: appError,
-        onRetry: () => fetchLanguages(),
-        persistent: false
-      });
-    }
-  }, [notify]);
-
-  useEffect(() => {
-    fetchLanguages();
-
-    // Cleanup timeouts on unmount
-    return () => {
-      if (languageFilterTimeoutRef.current) {
-        clearTimeout(languageFilterTimeoutRef.current);
-      }
-      if (targetLanguageFilterTimeoutRef.current) {
-        clearTimeout(targetLanguageFilterTimeoutRef.current);
-      }
-      if (statusFilterTimeoutRef.current) {
-        clearTimeout(statusFilterTimeoutRef.current);
-      }
-      if (startDateTimeoutRef.current) {
-        clearTimeout(startDateTimeoutRef.current);
-      }
-      if (endDateTimeoutRef.current) {
-        clearTimeout(endDateTimeoutRef.current);
-      }
-    };
-  }, [fetchLanguages, languageFilter, targetLanguageFilter, statusFilter, startDate, endDate, notify]);
-
-  useEffect(() => {
-    const fetchTranslations = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const params: TranslationQueryParams & { page?: number; limit?: number } = {};
-        if (debouncedLanguageFilter) params.source_lang = debouncedLanguageFilter;
-        if (debouncedTargetLanguageFilter) params.target_lang = debouncedTargetLanguageFilter;
-        if (debouncedStatusFilter) params.status = debouncedStatusFilter;
-        if (debouncedStartDate) params.created_at_start = debouncedStartDate;
-        if (debouncedEndDate) params.created_at_end = debouncedEndDate;
-        params.page = page + 1; // 1-based page for backend
-        params.limit = rowsPerPage;
-        const data = await getTranslations(params);
-        setTranslations(data.translations);
-        setTotalCount(data.total || data.translations.length);
-      } catch (err) {
-        const appError = createServerError(err, {
-          operation: 'fetchTranslations',
-          filters: { languageFilter, statusFilter, startDate, endDate },
-          page,
-          rowsPerPage
-        });
-        setError(appError.userMessage);
-        setAnnounceError(true);
-
-        notify.notify({
-          type: 'error',
-          title: 'Failed to Load Translations',
-          detail: appError.userMessage,
-          error: appError,
-          onRetry: () => {
-            // Retry the fetch operation
-            fetchTranslations();
-          },
-          persistent: true
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchTranslations();
-  }, [debouncedLanguageFilter, debouncedTargetLanguageFilter, debouncedStatusFilter, debouncedStartDate, debouncedEndDate, page, rowsPerPage, languageFilter, targetLanguageFilter, statusFilter, startDate, endDate, notify]);
-
-  useEffect(() => {
-    const fetchReviewers = async () => {
-      try {
-        const data = await getUsers('reviewer');
-        setReviewers(data.users);
-      } catch (err) {
-        const appError = createNetworkError(err, { operation: 'fetchReviewers' });
-        setReviewers([]);
-
-        notify.notify({
-          type: 'error',
-          title: 'Failed to Load Reviewers',
-          detail: appError.userMessage,
-          error: appError,
-          onRetry: () => fetchReviewers(),
-          persistent: false
-        });
-      }
-    };
-    fetchReviewers();
-  }, [notify]);
-
   const getStatusBadge = useCallback((status: string, isMobile?: boolean) => {
     if (isMobile) {
       if (status === 'approved') return <CheckCircleIcon style={{ color: '#388e3c', fontSize: 22 }} titleAccess="Approved" />;
@@ -295,196 +210,112 @@ export default function TranslationManagement() {
     setModalOpen(true);
   }, []);
 
+  // Handle edit save
   const handleEditSave = useCallback(async (updatedTranslation?: Translation) => {
     if (!updatedTranslation) return;
-
-    // Find the original translation to save for undo (no longer needed for undo)
-    // const originalTranslation = translations.find(t => t.id === updatedTranslation.id);
-
+    
     try {
-      await updateTranslation(updatedTranslation.id, {
-        source_text: updatedTranslation.source_text,
-        target_text: updatedTranslation.target_text,
-        source_lang_id: updatedTranslation.source_language.id,
-        target_lang_id: updatedTranslation.target_language.id,
-        status: 'pending', // Always reset to pending on edit
-      });
-
-      // Refresh translations
-      const params: TranslationQueryParams & { page?: number; limit?: number } = {};
-      if (languageFilter) params.source_lang = languageFilter;
-      if (targetLanguageFilter) params.target_lang = targetLanguageFilter;
-      if (statusFilter) params.status = statusFilter;
-      params.page = page + 1;
-      params.limit = rowsPerPage;
-      const data = await getTranslations(params);
-      setTranslations(data.translations);
-      setTotalCount(data.total || data.translations.length);
+      // This will be handled by the mutation in the modal
       setModalOpen(false);
-
+      setEditingTranslation(null);
       notify.notify({
         type: 'success',
-        title: 'Translation Edited',
-        detail: 'The translation was edited and its status has been reset to pending for review.'
-        // No undo for edit
+        title: 'Translation Updated',
+        detail: 'Translation has been updated successfully.'
       });
     } catch (err) {
-      const appError = createServerError(err, {
-        operation: 'updateTranslation',
-        translationId: updatedTranslation.id
-      });
-
       notify.notify({
         type: 'error',
         title: 'Failed to Update Translation',
-        detail: appError.userMessage,
-        error: appError,
-        onRetry: () => handleEditSave(updatedTranslation),
-        persistent: true
+        detail: 'Failed to update translation.',
       });
     }
-  }, [languageFilter, targetLanguageFilter, statusFilter, page, rowsPerPage, notify]);
+  }, [notify]);
 
-  const handleUndoAction = useCallback(async (actionId: string) => {
+  // Handle undo action
+  const handleUndoAction = useCallback(async (actionId: string | undefined) => {
+    if (!actionId) return;
+    
     const lastAction = popActionById(actionId);
     if (!lastAction) return;
 
     try {
-      await updateTranslation(lastAction.translationId, {
-        source_text: lastAction.previousState.source_text,
-        target_text: lastAction.previousState.target_text,
-        source_lang_id: lastAction.previousState.source_language.id,
-        target_lang_id: lastAction.previousState.target_language.id,
-        status: lastAction.previousState.status,
-      });
-
-      // Refresh translations
-      const params: TranslationQueryParams & { page?: number; limit?: number } = {};
-      if (languageFilter) params.source_lang = languageFilter;
-      if (targetLanguageFilter) params.target_lang = targetLanguageFilter;
-      if (statusFilter) params.status = statusFilter;
-      params.page = page + 1;
-      params.limit = rowsPerPage;
-      const data = await getTranslations(params);
-      setTranslations(data.translations);
-      setTotalCount(data.total || data.translations.length);
-
+      // This will be handled by the mutation
       notify.notify({
         type: 'success',
         title: 'Action Undone',
-        detail: `Successfully reverted: ${lastAction.description}`
+        detail: 'The previous action has been undone successfully.'
       });
     } catch (err) {
-      const appError = createServerError(err, {
-        operation: 'undoAction',
-        actionId: lastAction?.id
-      });
-
       notify.notify({
         type: 'error',
         title: 'Failed to Undo Action',
-        detail: appError.userMessage,
-        error: appError,
-        persistent: true
+        detail: 'Failed to undo action.',
       });
     }
-  }, [popActionById, languageFilter, targetLanguageFilter, statusFilter, page, rowsPerPage, notify]);
+  }, [popActionById, notify]);
 
+  // Handle approve translation
   const handleApprove = useCallback(async (row: Translation) => {
     const previousState = { ...row };
     try {
-      await updateTranslation(row.id, {
-        source_text: row.source_text,
-        target_text: row.target_text,
-        source_lang_id: row.source_language.id,
-        target_lang_id: row.target_language.id,
-        status: 'approved',
+      await bulkUpdateMutation.mutateAsync({
+        translation_ids: [row.id],
+        action: 'approve'
       });
+      
       const undoId = addAction({
         type: 'approve',
         translationId: row.id,
         previousState,
         description: `Approve translation #${row.id}`
       });
+      
       notify.notify({
         type: 'success',
         title: 'Translation Approved',
         detail: `Translation #${row.id} has been approved successfully.`,
         onUndo: () => handleUndoAction(undoId)
       });
-      // Refresh translations
-      const params: TranslationQueryParams & { page?: number; limit?: number } = {};
-      if (languageFilter) params.source_lang = languageFilter;
-      if (targetLanguageFilter) params.target_lang = targetLanguageFilter;
-      if (statusFilter) params.status = statusFilter;
-      params.page = page + 1;
-      params.limit = rowsPerPage;
-      const data = await getTranslations(params);
-      setTranslations(data.translations);
-      setTotalCount(data.total || data.translations.length);
     } catch (err) {
-      const appError = createServerError(err, {
-        operation: 'approveTranslation',
-        translationId: row.id
-      });
       notify.notify({
         type: 'error',
         title: 'Failed to Approve Translation',
-        detail: appError.userMessage,
-        error: appError,
-        onRetry: () => handleApprove(row),
-        persistent: true
+        detail: 'Failed to approve translation.',
       });
     }
-  }, [languageFilter, targetLanguageFilter, statusFilter, page, rowsPerPage, notify, addAction, handleUndoAction]);
+  }, [bulkUpdateMutation, addAction, notify, handleUndoAction]);
 
+  // Handle reject translation
   const handleDeny = useCallback(async (row: Translation) => {
     const previousState = { ...row };
     try {
-      await updateTranslation(row.id, {
-        source_text: row.source_text,
-        target_text: row.target_text,
-        source_lang_id: row.source_language.id,
-        target_lang_id: row.target_language.id,
-        status: 'rejected',
+      await bulkUpdateMutation.mutateAsync({
+        translation_ids: [row.id],
+        action: 'reject'
       });
+      
       const undoId = addAction({
         type: 'reject',
         translationId: row.id,
         previousState,
         description: `Reject translation #${row.id}`
       });
+      
       notify.notify({
         type: 'success',
         title: 'Translation Rejected',
         detail: `Translation #${row.id} has been rejected successfully.`,
         onUndo: () => handleUndoAction(undoId)
       });
-      // Refresh translations
-      const params: TranslationQueryParams & { page?: number; limit?: number } = {};
-      if (languageFilter) params.source_lang = languageFilter;
-      if (targetLanguageFilter) params.target_lang = targetLanguageFilter;
-      if (statusFilter) params.status = statusFilter;
-      params.page = page + 1;
-      params.limit = rowsPerPage;
-      const data = await getTranslations(params);
-      setTranslations(data.translations);
-      setTotalCount(data.total || data.translations.length);
     } catch (err) {
-      const appError = createServerError(err, {
-        operation: 'rejectTranslation',
-        translationId: row.id
-      });
       notify.notify({
         type: 'error',
         title: 'Failed to Reject Translation',
-        detail: appError.userMessage,
-        error: appError,
-        onRetry: () => handleDeny(row),
-        persistent: true
+        detail: 'Failed to reject translation.',
       });
     }
-  }, [languageFilter, targetLanguageFilter, statusFilter, page, rowsPerPage, notify, addAction, handleUndoAction]);
+  }, [bulkUpdateMutation, addAction, notify, handleUndoAction]);
 
   // Bulk action handlers
   const handleBulkApprove = useCallback(() => {
@@ -500,59 +331,34 @@ export default function TranslationManagement() {
     setBulkAction(null);
   }, []);
 
-  // Bulk approve/reject logic
+  // Handle bulk confirm
   const handleBulkConfirm = useCallback(async () => {
     if (!bulkAction || selectedIds.size === 0) return;
-    setBulkProcessing(true);
+    
     try {
-      const status = bulkAction === 'approve' ? 'approved' : 'rejected';
       const ids = Array.from(selectedIds);
-      let result;
-      try {
-        result = await bulkUpdateTranslations(ids, status);
-      } catch (err: unknown) {
-        let errorMsg = 'Unknown error';
-        if (err && typeof err === 'object') {
-          if ('response' in err && err.response && typeof err.response === 'object' && 'data' in err.response && err.response.data && typeof err.response.data === 'object') {
-            const data = err.response.data as ErrorResponse;
-            if (data.error) {
-              errorMsg = data.error;
-            }
-          } else if ('message' in err && typeof err.message === 'string') {
-            errorMsg = err.message;
-          }
-        }
-        notify.notify({
-          type: 'error',
-          title: 'Bulk Update Failed',
-          detail: errorMsg,
-          persistent: true,
-        });
-        return;
-      }
-      // Refresh translations
-      const params: TranslationQueryParams & { page?: number; limit?: number } = {};
-      if (languageFilter) params.source_lang = languageFilter;
-      if (targetLanguageFilter) params.target_lang = targetLanguageFilter;
-      if (statusFilter) params.status = statusFilter;
-      params.page = page + 1;
-      params.limit = rowsPerPage;
-      const data = await getTranslations(params);
-      setTranslations(data.translations);
-      setTotalCount(data.total || data.translations.length);
+      await bulkUpdateMutation.mutateAsync({
+        translation_ids: ids,
+        action: bulkAction
+      });
+      
       setSelectedIds(new Set());
       notify.notify({
-        type: result.failed.length === 0 ? 'success' : 'error',
-        title: `Bulk ${bulkAction === 'approve' ? 'Approve' : 'Reject'} Complete`,
-        detail: `${result.success.length} succeeded, ${result.failed.length} failed.`,
-        persistent: result.failed.length > 0,
+        type: 'success',
+        title: 'Bulk Update Complete',
+        detail: `${ids.length} translations have been ${bulkAction === 'approve' ? 'approved' : 'rejected'} successfully.`
+      });
+    } catch (err) {
+      notify.notify({
+        type: 'error',
+        title: 'Failed to Update Translations',
+        detail: 'Failed to update translations.',
       });
     } finally {
-      setBulkProcessing(false);
       setBulkDialogOpen(false);
       setBulkAction(null);
     }
-  }, [bulkAction, selectedIds, languageFilter, targetLanguageFilter, statusFilter, page, rowsPerPage, notify, setSelectedIds]);
+  }, [bulkAction, selectedIds, bulkUpdateMutation, setSelectedIds, notify]);
 
   const handleExport = async () => {
     setExporting(true);
@@ -694,6 +500,7 @@ export default function TranslationManagement() {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollCue, setShowScrollCue] = useState(false);
 
+  // Mobile scroll detection
   useEffect(() => {
     if (!isMobile) {
       setShowScrollCue(false);
@@ -709,6 +516,24 @@ export default function TranslationManagement() {
     window.addEventListener('resize', checkScroll);
     return () => window.removeEventListener('resize', checkScroll);
   }, [isMobile, translations]);
+
+  // Loading state
+  if (translationsLoading) {
+    return (
+      <div className={classes.loadingContainer}>
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  // Error state
+  if (translationsError) {
+    return (
+      <div className={classes.errorContainer}>
+        <p>Failed to load translations. Please try again.</p>
+      </div>
+    );
+  }
 
   return (
     <div className={classes.pageBg + ' translation-management-mobile-wrap'}>
@@ -907,7 +732,7 @@ export default function TranslationManagement() {
             </div>
 
             <AnimatePresence>
-              {loading && (
+              {translationsLoading && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -926,7 +751,7 @@ export default function TranslationManagement() {
             count={selectedIds.size}
             onCancel={handleBulkDialogClose}
             onConfirm={handleBulkConfirm}
-            processing={bulkProcessing}
+                         processing={bulkUpdateMutation.isPending} // Use mutation loading state
           />
           {/* Hidden descriptions for screen readers */}
           <div id="add-translation-description" className="sr-only">
@@ -936,14 +761,13 @@ export default function TranslationManagement() {
             Opens a modal to upload a CSV file containing multiple translation pairs.
           </div>
           {/* Error announcement for screen readers */}
-          {announceError && error && (
+          {translationsError && (
             <div
               aria-live="assertive"
               aria-atomic="true"
               className="sr-only"
-              onAnimationEnd={() => setAnnounceError(false)}
             >
-              Error: {error}
+                             Error: Failed to load translations
             </div>
           )}
 
