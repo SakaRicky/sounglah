@@ -1,56 +1,32 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { SounglahTable } from '@/components/atoms/Table';
 import { getLanguageTableColumns } from '../components/LanguageManagement/languageTableColumns';
 import { CreateLanguageModal } from '../components/LanguageManagement/CreateLanguageModal';
 import { EditLanguageModal } from '../components/LanguageManagement/EditLanguageModal';
 import { LanguageCardList } from '../components/LanguageManagement/LanguageCardList';
 import { DeleteConfirmationModal } from '@/components/atoms/DeleteConfirmationModal';
-import { getLanguages, deleteLanguage } from '../api/languages';
 import type { Language } from '../api/languages';
 import classes from './LanguageManagement.module.scss';
-import { useNotification } from '@/contexts/NotificationContext';
 import { IconButton, Tooltip } from '@mui/material';
 import LanguageIcon from '@mui/icons-material/Language';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SounglahButton } from '@/components/atoms/SounglahButton/SounglahButton';
 import { LoadingSpinner } from '@/components/atoms/LoadingSpinner';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { AxiosError } from 'axios';
+import { useLanguages, useDeleteLanguage } from '../hooks/useLanguages';
 
 export const LanguageManagement: React.FC = () => {
-  const [languages, setLanguages] = useState<Language[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [createModalOpened, setCreateModalOpened] = useState(false);
   const [editModalOpened, setEditModalOpened] = useState(false);
   const [editLanguage, setEditLanguage] = useState<Language | null>(null);
   const [deleteModalOpened, setDeleteModalOpened] = useState(false);
   const [languageToDelete, setLanguageToDelete] = useState<Language | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const notify = useNotification();
   const isMobile = useMediaQuery('(max-width: 768px)');
 
-  // Fetch languages
-  const fetchLanguages = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await getLanguages();
-      setLanguages(response.languages);
-    } catch (error) {
-      console.error('Failed to fetch languages:', error);
-      notify.notify({
-        type: 'error',
-        title: 'Failed to Load Languages',
-        detail: 'An error occurred while loading languages.'
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [notify]);
-
-  useEffect(() => {
-    fetchLanguages();
-  }, [fetchLanguages]);
+  // React Query hooks
+  const { data: languages = [], isLoading, error } = useLanguages();
+  const deleteLanguageMutation = useDeleteLanguage();
 
   // Selection handlers
   const handleSelectRow = useCallback((id: number, checked: boolean) => {
@@ -95,66 +71,41 @@ export const LanguageManagement: React.FC = () => {
   const handleDeleteConfirm = useCallback(async () => {
     if (!languageToDelete) return;
 
-    setDeleteLoading(true);
     try {
-      await deleteLanguage(languageToDelete.id);
-      
-      notify.notify({
-        type: 'success',
-        title: 'Language Deleted',
-        detail: `Language "${languageToDelete.name}" has been deleted successfully.`
-      });
-      
-      // Refresh the language list
-      fetchLanguages();
-      
+      await deleteLanguageMutation.mutateAsync(languageToDelete.id);
+
       // Remove from selected IDs if it was selected
       setSelectedIds(prev => {
         const newSet = new Set(prev);
         newSet.delete(languageToDelete.id);
         return newSet;
       });
-      
+
       // Close the modal
       setDeleteModalOpened(false);
       setLanguageToDelete(null);
-      
+
     } catch (error) {
+      // Error handling is done in the mutation hook
       console.error('Failed to delete language:', error);
-      
-      let errorMessage = 'Failed to delete language. Please try again.';
-      
-      if (error instanceof AxiosError) {
-        if (error.response?.status === 400) {
-          errorMessage = error.response.data.error || 'Cannot delete this language.';
-        } else if (error.response?.status === 404) {
-          errorMessage = 'Language not found.';
-        } else if (error.response?.data?.error) {
-          errorMessage = error.response.data.error;
-        }
-      }
-      
-      notify.notify({
-        type: 'error',
-        title: 'Failed to Delete Language',
-        detail: errorMessage
-      });
-    } finally {
-      setDeleteLoading(false);
     }
-  }, [languageToDelete, notify, fetchLanguages]);
+  }, [languageToDelete, deleteLanguageMutation]);
 
   const handleDeleteCancel = useCallback(() => {
     setDeleteModalOpened(false);
     setLanguageToDelete(null);
-    setDeleteLoading(false);
   }, []);
 
   const handleCreateSuccess = useCallback(() => {
-    fetchLanguages();
-  }, [fetchLanguages]);
+    setCreateModalOpened(false);
+  }, []);
 
-  const handleCloseModal = useCallback(() => {
+  const handleEditSuccess = useCallback(() => {
+    setEditModalOpened(false);
+    setEditLanguage(null);
+  }, []);
+
+  const handleCloseCreateModal = useCallback(() => {
     setCreateModalOpened(false);
   }, []);
 
@@ -164,7 +115,7 @@ export const LanguageManagement: React.FC = () => {
   }, []);
 
   // Table columns
-  const languageTableColumns = useMemo(() => 
+  const languageTableColumns = useMemo(() =>
     getLanguageTableColumns({
       selectedIds,
       handleSelectRow,
@@ -173,6 +124,7 @@ export const LanguageManagement: React.FC = () => {
       handleSelectAll,
       handleEditClick,
       handleDeleteClick,
+      isMobile,
       actionsHeader: (
         <div className={classes.tableHeaderActions}>
           <Tooltip title="Add Language">
@@ -189,48 +141,60 @@ export const LanguageManagement: React.FC = () => {
           </Tooltip>
         </div>
       ),
-    }), 
-    [selectedIds, handleSelectRow, selectAllChecked, selectAllIndeterminate, handleSelectAll, handleEditClick, handleDeleteClick]
+    }),
+    [
+      selectedIds,
+      handleSelectRow,
+      selectAllChecked,
+      selectAllIndeterminate,
+      handleSelectAll,
+      handleEditClick,
+      handleDeleteClick,
+      isMobile,
+    ]
   );
 
-  if (loading) {
+  // Loading state
+  if (isLoading) {
     return (
-      <div className={classes.container}>
-        <LoadingSpinner 
-          message="Loading languages..." 
-          size="large"
-          fullHeight={false}
-        />
+      <div className={classes.loadingContainer}>
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className={classes.errorContainer}>
+        <p>Failed to load languages. Please try again.</p>
       </div>
     );
   }
 
   return (
     <div className={classes.container}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className={classes.header}
-      >
+      <div className={classes.header}>
         <h1 className={classes.title}>Language Management</h1>
         <p className={classes.subtitle}>
-          Manage source and target languages for translations
+          Manage supported languages for translation
         </p>
-      </motion.div>
-
-      {/* Add Language Button (desktop only, hidden on mobile by SCSS) */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
-        <SounglahButton
-          variant="primary"
-          onClick={() => setCreateModalOpened(true)}
-          style={{ minWidth: 140, fontWeight: 600, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}
-          aria-label="Add new language"
-        >
-          <LanguageIcon style={{ fontSize: 22 }} />
-          Add Language
-        </SounglahButton>
       </div>
+
+      {/* Desktop Add Language Button */}
+      {!isMobile && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
+          <SounglahButton
+            variant="primary"
+            onClick={() => setCreateModalOpened(true)}
+            style={{ minWidth: 140, fontWeight: 600, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}
+            aria-label="Add new language"
+          >
+            <LanguageIcon style={{ fontSize: 22 }} />
+            Add Language
+          </SounglahButton>
+        </div>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -257,8 +221,8 @@ export const LanguageManagement: React.FC = () => {
             onDeleteLanguage={handleDeleteClick}
           />
         )}
-        
-        {/* Floating Action Buttons - Mobile Only */}
+
+        {/* Floating Action Button - Mobile Only */}
         {isMobile && (
           <div className={classes.floatingActionButtons}>
             <Tooltip title="Add Language" placement="left">
@@ -280,15 +244,15 @@ export const LanguageManagement: React.FC = () => {
         {createModalOpened && (
           <CreateLanguageModal
             opened={createModalOpened}
-            onClose={handleCloseModal}
+            onClose={handleCloseCreateModal}
             onSuccess={handleCreateSuccess}
           />
         )}
-        {editModalOpened && (
+        {editModalOpened && editLanguage && (
           <EditLanguageModal
             opened={editModalOpened}
             onClose={handleCloseEditModal}
-            onSuccess={handleCreateSuccess}
+            onSuccess={handleEditSuccess}
             language={editLanguage}
           />
         )}
@@ -301,7 +265,7 @@ export const LanguageManagement: React.FC = () => {
             message="Are you sure you want to delete this language?"
             itemName={languageToDelete.name}
             itemType="language"
-            loading={deleteLoading}
+            loading={deleteLanguageMutation.isPending}
           />
         )}
       </AnimatePresence>

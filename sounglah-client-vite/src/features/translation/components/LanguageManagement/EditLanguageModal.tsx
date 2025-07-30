@@ -1,20 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import TextField from '@mui/material/TextField';
 import { SounglahButton } from '@/components/atoms/SounglahButton/SounglahButton';
-import { updateLanguage } from '../../api/languages';
+import CircularProgress from '@mui/material/CircularProgress';
 import type { Language, UpdateLanguageRequest } from '../../api/languages';
-import { useNotification } from '@/contexts/NotificationContext';
 import { theme } from '@/theme';
+import { motion } from 'framer-motion';
+import { useUpdateLanguage } from '../../hooks/useLanguages';
 
 interface EditLanguageModalProps {
   opened: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  language: Language | null;
+  language: Language;
 }
 
 export const EditLanguageModal: React.FC<EditLanguageModalProps> = ({
@@ -29,8 +30,14 @@ export const EditLanguageModal: React.FC<EditLanguageModalProps> = ({
     region: '',
     description: '',
   });
-  const [loading, setLoading] = useState(false);
-  const notify = useNotification();
+  const [fieldErrors, setFieldErrors] = useState({
+    name: false,
+    iso_code: false,
+  });
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+
+  // React Query hook
+  const updateLanguageMutation = useUpdateLanguage();
 
   // Update form data when language changes
   useEffect(() => {
@@ -44,50 +51,45 @@ export const EditLanguageModal: React.FC<EditLanguageModalProps> = ({
     }
   }, [language]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    setHasSubmitted(true);
     
-    if (!language || !formData.name.trim()) {
-      notify.notify({
-        type: 'error',
-        title: 'Language Name Required',
-        detail: 'Please enter a language name.',
-      });
-      return;
+    // Custom validation for required fields
+    const newFieldErrors = {
+      name: !formData.name.trim(),
+      iso_code: !formData.iso_code.trim(),
+    };
+    setFieldErrors(newFieldErrors);
+    
+    if (Object.values(newFieldErrors).some(Boolean)) {
+      return; // Don't submit if there are validation errors
     }
 
-    setLoading(true);
     try {
-      await updateLanguage(language.id, formData);
+      await updateLanguageMutation.mutateAsync({ id: language.id, data: formData });
+      handleClose();
       onSuccess();
-      onClose();
-      notify.notify({
-        type: 'success',
-        title: 'Language Updated',
-        detail: 'Language updated successfully.',
-      });
-    } catch (err: unknown) {
-      let errorMsg = 'Could not update language.';
-      if (err && typeof err === 'object' && 'response' in err && err.response && typeof err.response === 'object' && 'data' in err.response && err.response.data && typeof err.response.data === 'object' && 'error' in err.response.data) {
-        errorMsg = String((err.response as { error?: string }).error) || errorMsg;
-      }
-      notify.notify({
-        type: 'error',
-        title: 'Failed to Update Language',
-        detail: errorMsg,
-      });
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      // Error handling is done in the mutation hook
+      console.error('Failed to update language:', err);
     }
-  };
+  }, [formData, language.id, updateLanguageMutation, onSuccess]);
 
-  const handleClose = () => {
-    if (!loading) {
-      onClose();
-    }
-  };
+  const handleClose = useCallback(() => {
+    setFieldErrors({ name: false, iso_code: false });
+    setHasSubmitted(false);
+    onClose();
+  }, [onClose]);
 
-  if (!language) return null;
+  const handleFormChange = useCallback((field: keyof UpdateLanguageRequest, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  // Memoize form validation
+  const isFormValid = useMemo(() => {
+    return formData.name.trim() && formData.iso_code.trim();
+  }, [formData]);
 
   return (
     <Dialog
@@ -112,118 +114,121 @@ export const EditLanguageModal: React.FC<EditLanguageModalProps> = ({
           color: theme.colors?.brown?.[8] || '#6d4c1b',
           textAlign: 'center',
           borderBottom: `1.5px solid ${theme.colors?.brown?.[2] || '#e0c9a6'}`,
-          background: theme.colors?.beige?.[1] || '#FFF2DF',
-          margin: 0,
-          padding: '24px 24px 16px 24px',
+          padding: '24px 24px 16px',
         }}
       >
-        Edit Language: {language.name}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          Edit Language
+        </motion.div>
       </DialogTitle>
-      
+
       <form onSubmit={handleSubmit}>
-        <DialogContent style={{ padding: 24 }}>
-          <TextField
-            label="Language Name *"
-            value={formData.name}
-            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-            fullWidth
-            required
-            style={{ marginBottom: 16 }}
-            InputProps={{
-              style: {
-                fontFamily: 'Georgia, serif',
-                color: theme.colors?.brown?.[8] || '#6d4c1b',
-              }
-            }}
-            InputLabelProps={{
-              style: {
-                fontFamily: 'Georgia, serif',
-                color: theme.colors?.brown?.[6] || '#8b6f3d',
-              }
-            }}
-          />
-          
-          <TextField
-            label="ISO Code"
-            value={formData.iso_code}
-            onChange={(e) => setFormData(prev => ({ ...prev, iso_code: e.target.value }))}
-            fullWidth
-            style={{ marginBottom: 16 }}
-            placeholder="e.g., en, fr, es"
-            InputProps={{
-              style: {
-                fontFamily: 'monospace',
-                color: theme.colors?.brown?.[8] || '#6d4c1b',
-              }
-            }}
-            InputLabelProps={{
-              style: {
-                fontFamily: 'Georgia, serif',
-                color: theme.colors?.brown?.[6] || '#8b6f3d',
-              }
-            }}
-          />
-          
-          <TextField
-            label="Region"
-            value={formData.region}
-            onChange={(e) => setFormData(prev => ({ ...prev, region: e.target.value }))}
-            fullWidth
-            style={{ marginBottom: 16 }}
-            placeholder="e.g., West Africa, Europe"
-            InputProps={{
-              style: {
-                fontFamily: 'Georgia, serif',
-                color: theme.colors?.brown?.[8] || '#6d4c1b',
-              }
-            }}
-            InputLabelProps={{
-              style: {
-                fontFamily: 'Georgia, serif',
-                color: theme.colors?.brown?.[6] || '#8b6f3d',
-              }
-            }}
-          />
-          
-          <TextField
-            label="Description"
-            value={formData.description}
-            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            fullWidth
-            multiline
-            rows={3}
-            placeholder="Brief description of the language..."
-            InputProps={{
-              style: {
-                fontFamily: 'Georgia, serif',
-                color: theme.colors?.brown?.[8] || '#6d4c1b',
-              }
-            }}
-            InputLabelProps={{
-              style: {
-                fontFamily: 'Georgia, serif',
-                color: theme.colors?.brown?.[6] || '#8b6f3d',
-              }
-            }}
-          />
+        <DialogContent style={{ padding: '24px' }}>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
+          >
+            <TextField
+              label="Language Name *"
+              placeholder="e.g., English, French, Spanish"
+              value={formData.name}
+              onChange={(e) => handleFormChange('name', e.target.value)}
+              error={hasSubmitted && fieldErrors.name}
+              helperText={hasSubmitted && fieldErrors.name ? 'Language name is required' : ''}
+              variant="outlined"
+              fullWidth
+              style={{
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: theme.colors?.beige?.[1] || '#FFF8F0',
+                  borderRadius: 8,
+                }
+              }}
+            />
+
+            <TextField
+              label="ISO Code *"
+              placeholder="e.g., en, fr, es"
+              value={formData.iso_code}
+              onChange={(e) => handleFormChange('iso_code', e.target.value)}
+              error={hasSubmitted && fieldErrors.iso_code}
+              helperText={hasSubmitted && fieldErrors.iso_code ? 'ISO code is required' : ''}
+              variant="outlined"
+              fullWidth
+              style={{
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: theme.colors?.beige?.[1] || '#FFF8F0',
+                  borderRadius: 8,
+                }
+              }}
+            />
+
+            <TextField
+              label="Region (Optional)"
+              placeholder="e.g., US, CA, GB"
+              value={formData.region}
+              onChange={(e) => handleFormChange('region', e.target.value)}
+              variant="outlined"
+              fullWidth
+              style={{
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: theme.colors?.beige?.[1] || '#FFF8F0',
+                  borderRadius: 8,
+                }
+              }}
+            />
+
+            <TextField
+              label="Description (Optional)"
+              placeholder="Brief description of the language"
+              value={formData.description}
+              onChange={(e) => handleFormChange('description', e.target.value)}
+              variant="outlined"
+              multiline
+              rows={3}
+              fullWidth
+              style={{
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: theme.colors?.beige?.[1] || '#FFF8F0',
+                  borderRadius: 8,
+                }
+              }}
+            />
+          </motion.div>
         </DialogContent>
-        
-        <DialogActions style={{ padding: '16px 24px 24px 24px', gap: 12 }}>
+
+        <DialogActions
+          style={{
+            padding: '16px 24px 24px',
+            borderTop: `1px solid ${theme.colors?.brown?.[2] || '#e0c9a6'}`,
+            gap: 12,
+          }}
+        >
           <SounglahButton
             variant="secondary"
             onClick={handleClose}
-            disabled={loading}
-            style={{ minWidth: 100, fontWeight: 600, fontSize: 15 }}
+            disabled={updateLanguageMutation.isPending}
+            style={{ minWidth: 100 }}
           >
             Cancel
           </SounglahButton>
+
           <SounglahButton
             variant="primary"
             type="submit"
-            disabled={loading || !formData.name.trim()}
-            style={{ minWidth: 100, fontWeight: 600, fontSize: 15 }}
+            disabled={updateLanguageMutation.isPending || !isFormValid}
+            style={{ minWidth: 100 }}
           >
-            {loading ? 'Updating...' : 'Update Language'}
+            {updateLanguageMutation.isPending ? (
+              <CircularProgress size={20} style={{ color: 'white' }} />
+            ) : (
+              'Update Language'
+            )}
           </SounglahButton>
         </DialogActions>
       </form>
