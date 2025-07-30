@@ -1,4 +1,4 @@
-import { type ChangeEvent, useState, useCallback } from 'react';
+import { type ChangeEvent, useState, useCallback, useEffect } from 'react';
 import useTypeWriter from '../../hooks/useTypeWriter';
 import { InputTextZone } from '../InputText';
 import { OutTextZone } from '../OutTextZone';
@@ -19,9 +19,10 @@ export const TranslationBox = () => {
     const [fullTranslation, setFullTranslation] = useState<string>("");
     const [noTextError, setNoTextError] = useState(false);
     const [manualLanguage, setManualLanguage] = useState<SourceLanguageCode | null>(null);
+    const [previousDetectedLanguage, setPreviousDetectedLanguage] = useState<SourceLanguageCode>(SourceLanguageCode.Undetermined);
 
     // React Query hooks
-    const { data: detectedLangCode } = useLanguageDetectionQuery(sourceText);
+    const { data: detectedLangCode, isLoading: isDetecting } = useLanguageDetectionQuery(sourceText);
     const { translateText, isTranslating } = useTranslationState();
 
     // Determine the source language - manual selection takes precedence over auto-detection
@@ -29,7 +30,16 @@ export const TranslationBox = () => {
         (langMap[detectedLangCode] || SourceLanguageCode.Undetermined) : 
         SourceLanguageCode.Undetermined;
 
-    const currentSourceLanguage = manualLanguage || autoDetectedSourceLanguage;
+    // Update previous detected language when we get new data
+    useEffect(() => {
+        if (autoDetectedSourceLanguage !== SourceLanguageCode.Undetermined) {
+            setPreviousDetectedLanguage(autoDetectedSourceLanguage);
+        }
+    }, [autoDetectedSourceLanguage]);
+
+    // Use previous detected language while loading to prevent flickering
+    const currentSourceLanguage = manualLanguage || 
+        (isDetecting ? previousDetectedLanguage : autoDetectedSourceLanguage);
 
     const displayedTranslation = useTypeWriter({ fullTranslatedText: fullTranslation });
 

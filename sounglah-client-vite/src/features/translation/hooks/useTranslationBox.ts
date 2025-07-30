@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { translate, detectLangFromText, type Translate } from '@/services';
 import { SourceLanguageCode } from '@/types';
+import { useState, useEffect } from 'react';
 
 // Useful exported types
 export type { Translate };
@@ -24,12 +25,24 @@ export const translationBoxKeys = {
   detectedLanguage: (text: string) => [...translationBoxKeys.languageDetection(), text] as const,
 };
 
-// Language detection query hook
-export const useLanguageDetection = (text: string) => {
+// Debounced language detection hook
+export const useLanguageDetection = (text: string, debounceMs: number = 800) => {
+  const [debouncedText, setDebouncedText] = useState(text);
+
+  // Debounce the text input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedText(text);
+    }, debounceMs);
+
+    return () => clearTimeout(timer);
+  }, [text, debounceMs]);
+
+  // Only run the query with debounced text
   return useQuery({
-    queryKey: translationBoxKeys.detectedLanguage(text),
-    queryFn: () => detectLangFromText(text),
-    enabled: text.trim().length >= 3, // Only detect if text is long enough
+    queryKey: translationBoxKeys.detectedLanguage(debouncedText),
+    queryFn: () => detectLangFromText(debouncedText),
+    enabled: debouncedText.trim().length >= 3, // Only detect if text is long enough
     staleTime: 5 * 60 * 1000, // 5 minutes - language detection doesn't change often
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
