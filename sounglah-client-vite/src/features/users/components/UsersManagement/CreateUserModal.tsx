@@ -7,13 +7,10 @@ import { SounglahButton } from '@/components/atoms/SounglahButton/SounglahButton
 import CircularProgress from '@mui/material/CircularProgress';
 import TextField from '@mui/material/TextField';
 import { SounglahSelect } from '@/components/atoms/SounglahSelect';
-import { createUser, getRoles } from '../../api/users';
-import type { Role } from '../../api/users';
-import { AxiosError } from 'axios';
 import classes from './CreateUserModal.module.scss';
 import { theme } from '@/theme';
-import { useNotification } from '@/contexts/NotificationContext';
 import { motion } from 'framer-motion';
+import { useCreateUser, useRoles } from '../../hooks/useUsers';
 
 interface CreateUserModalProps {
   opened: boolean;
@@ -32,29 +29,23 @@ export const CreateUserModal = React.memo<CreateUserModalProps>(({
     password: '',
     role_id: 0,
   });
-  const [formLoading, setFormLoading] = useState(false);
-  const [formError, setFormError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({
     username: false,
     email: false,
     password: false,
   });
   const [hasSubmitted, setHasSubmitted] = useState(false);
-  const notify = useNotification();
-  const [roles, setRoles] = useState<Role[]>([]);
-  // removed unused rolesLoading
+
+  // React Query hooks
+  const createUserMutation = useCreateUser();
+  const { data: roles = [] } = useRoles();
 
   React.useEffect(() => {
-    if (opened) {
-      getRoles()
-        .then(res => {
-          setRoles(res.roles);
-          // Set default role_id to first role if not set
-          setForm(f => ({ ...f, role_id: res.roles[0]?.id || 0 }));
-        })
-        .catch(() => setRoles([]));
+    if (opened && roles.length > 0) {
+      // Set default role_id to first role if not set
+      setForm(f => ({ ...f, role_id: roles[0]?.id || 0 }));
     }
-  }, [opened]);
+  }, [opened, roles]);
 
   const handleFormChange = useCallback((field: string, value: string | number) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -62,8 +53,6 @@ export const CreateUserModal = React.memo<CreateUserModalProps>(({
 
   const handleClose = useCallback(() => {
     setForm({ username: '', email: '', password: '', role_id: 0 });
-    setFormError('');
-    setFormLoading(false);
     setFieldErrors({ username: false, email: false, password: false });
     setHasSubmitted(false);
     onClose();
@@ -72,7 +61,6 @@ export const CreateUserModal = React.memo<CreateUserModalProps>(({
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setHasSubmitted(true);
-    setFormError('');
     
     // Custom validation for required fields
     const newFieldErrors = {
@@ -83,52 +71,30 @@ export const CreateUserModal = React.memo<CreateUserModalProps>(({
     setFieldErrors(newFieldErrors);
     
     if (Object.values(newFieldErrors).some(Boolean)) {
-      setFormError('Please fill in all required fields before submitting.');
-      return;
+      return; // Don't submit if there are validation errors
     }
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(form.email)) {
-      setFormError('Please enter a valid email address.');
-      return;
+      return; // Don't submit if email is invalid
     }
 
-    setFormLoading(true);
     try {
-      await createUser({
+      await createUserMutation.mutateAsync({
         username: form.username.trim(),
         email: form.email.trim().toLowerCase(),
         password: form.password,
         role_id: form.role_id,
       });
+      
       handleClose();
-      notify.notify({
-        type: 'success',
-        title: 'User Added',
-        detail: 'The user was created successfully.'
-      });
       onSuccess();
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setFormError(err.response?.data?.error || 'Failed to create user.');
-        notify.notify({
-          type: 'error',
-          title: 'Failed to Add User',
-          detail: err.response?.data?.error || 'An error occurred while creating the user.'
-        });
-      } else {
-        setFormError('Failed to create user.');
-        notify.notify({
-          type: 'error',
-          title: 'Failed to Add User',
-          detail: 'An error occurred while creating the user.'
-        });
-      }
-    } finally {
-      setFormLoading(false);
+      // Error handling is done in the mutation hook
+      console.error('Failed to create user:', err);
     }
-  }, [form, handleClose, notify, onSuccess]);
+  }, [form, createUserMutation, handleClose, onSuccess]);
 
   // Memoize role options from API
   const roleOptions = React.useMemo(() =>
@@ -200,41 +166,35 @@ export const CreateUserModal = React.memo<CreateUserModalProps>(({
               variant="outlined"
               className={classes.textField}
             />
-            <div>
-              <label className={classes.label} htmlFor="role">Role</label>
-              <div className={classes.select}>
-                <SounglahSelect
-                  id="role"
-                  placeholder="Select role"
-                  data={roleOptions}
-                  value={form.role_id ? form.role_id.toString() : ''}
-                  onChange={val => handleFormChange('role_id', Number(val))}
-                  backgroundColor={theme.colors?.beige?.[3] || '#FFF2DF'}
-                />
-              </div>
-            </div>
-            {formError && (
-              <div className={classes.errorText}>{formError}</div>
-            )}
+            <SounglahSelect
+              id="role"
+              placeholder="Select role"
+              data={roleOptions}
+              value={form.role_id ? form.role_id.toString() : ''}
+              onChange={(val) => handleFormChange('role_id', Number(val))}
+              backgroundColor={theme?.colors?.beige?.[3] || '#FFF2DF'}
+              className={classes.selectField}
+            />
           </div>
         </DialogContent>
-
-        <DialogActions className={classes.actions}>
+        
+        <DialogActions className={classes.dialogActions}>
           <SounglahButton
             variant="secondary"
-            type="button"
             onClick={handleClose}
-            disabled={formLoading}
+            disabled={createUserMutation.isPending}
+            style={{ minWidth: 100 }}
           >
             Cancel
           </SounglahButton>
+          
           <SounglahButton
             variant="primary"
             type="submit"
-            disabled={!isFormValid || formLoading}
-            style={{ minWidth: 120 }}
+            disabled={createUserMutation.isPending || !isFormValid}
+            style={{ minWidth: 100 }}
           >
-            {formLoading ? (
+            {createUserMutation.isPending ? (
               <CircularProgress size={20} style={{ color: 'white' }} />
             ) : (
               'Create User'

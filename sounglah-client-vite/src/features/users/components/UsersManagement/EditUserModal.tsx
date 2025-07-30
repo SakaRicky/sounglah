@@ -7,13 +7,11 @@ import { SounglahButton } from '@/components/atoms/SounglahButton/SounglahButton
 import CircularProgress from '@mui/material/CircularProgress';
 import TextField from '@mui/material/TextField';
 import { SounglahSelect } from '@/components/atoms/SounglahSelect';
-import { updateUser, getRoles } from '../../api/users';
-import type { Role, User, UpdateUserRequest } from '../../api/users';
-import { AxiosError } from 'axios';
+import type { User, UpdateUserRequest } from '../../api/users';
 import classes from './EditUserModal.module.scss';
 import { theme } from '@/theme';
-import { useNotification } from '@/contexts/NotificationContext';
 import { motion } from 'framer-motion';
+import { useUpdateUser, useRoles } from '../../hooks/useUsers';
 
 interface EditUserModalProps {
   opened: boolean;
@@ -34,14 +32,15 @@ export const EditUserModal = React.memo<EditUserModalProps>(({
     password: '',
     role_id: 0,
   });
-  const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({
     username: false,
     email: false,
   });
-  const notify = useNotification();
-  const [roles, setRoles] = useState<Role[]>([]);
+
+  // React Query hooks
+  const updateUserMutation = useUpdateUser();
+  const { data: roles = [] } = useRoles();
 
   useEffect(() => {
     if (user && opened) {
@@ -56,21 +55,13 @@ export const EditUserModal = React.memo<EditUserModalProps>(({
     }
   }, [user, opened]);
 
-  // Load roles and set current user's role
+  // Set current user's role_id when roles are loaded
   useEffect(() => {
-    if (opened) {
-      getRoles()
-        .then(res => {
-          setRoles(res.roles);
-          // Set current user's role_id
-          if (user) {
-            const currentRole = res.roles.find(role => role.name === user.role);
-            setForm(f => ({ ...f, role_id: currentRole?.id || res.roles[0]?.id || 0 }));
-          }
-        })
-        .catch(() => setRoles([]));
+    if (opened && user && roles.length > 0) {
+      const currentRole = roles.find(role => role.name === user.role);
+      setForm(f => ({ ...f, role_id: currentRole?.id || roles[0]?.id || 0 }));
     }
-  }, [opened, user]);
+  }, [opened, user, roles]);
 
   const handleFormChange = useCallback((field: string, value: string | number) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -79,7 +70,6 @@ export const EditUserModal = React.memo<EditUserModalProps>(({
   const handleClose = useCallback(() => {
     setForm({ username: '', email: '', password: '', role_id: 0 });
     setFormError('');
-    setFormLoading(false);
     setFieldErrors({ username: false, email: false });
     onClose();
   }, [onClose]);
@@ -112,7 +102,6 @@ export const EditUserModal = React.memo<EditUserModalProps>(({
       return;
     }
 
-    setFormLoading(true);
     try {
       // Prepare update data (only include fields that have changed or password if provided)
       const updateData: UpdateUserRequest = {
@@ -126,36 +115,15 @@ export const EditUserModal = React.memo<EditUserModalProps>(({
         updateData.password = form.password.trim();
       }
 
-      await updateUser(user.id, updateData);
-      
-      notify.notify({
-        type: 'success',
-        title: 'User Updated',
-        detail: `User "${form.username}" has been updated successfully.`
-      });
+      await updateUserMutation.mutateAsync({ id: user.id, data: updateData });
       
       handleClose();
       onSuccess();
     } catch (error) {
+      // Error handling is done in the mutation hook
       console.error('Failed to update user:', error);
-      
-      let errorMessage = 'Failed to update user. Please try again.';
-      
-      if (error instanceof AxiosError) {
-        if (error.response?.status === 409) {
-          errorMessage = error.response.data.error || 'Username or email already exists.';
-        } else if (error.response?.status === 400) {
-          errorMessage = error.response.data.error || 'Invalid data provided.';
-        } else if (error.response?.data?.error) {
-          errorMessage = error.response.data.error;
-        }
-      }
-      
-      setFormError(errorMessage);
-    } finally {
-      setFormLoading(false);
     }
-  }, [form, user, notify, handleClose, onSuccess]);
+  }, [form, user, updateUserMutation, handleClose, onSuccess]);
 
   const roleOptions = useMemo(() => 
     roles.map(role => ({
@@ -250,7 +218,7 @@ export const EditUserModal = React.memo<EditUserModalProps>(({
             <SounglahButton
               variant="secondary"
               onClick={handleClose}
-              disabled={formLoading}
+              disabled={updateUserMutation.isPending}
               style={{ minWidth: 100 }}
             >
               Cancel
@@ -259,10 +227,10 @@ export const EditUserModal = React.memo<EditUserModalProps>(({
             <SounglahButton
               variant="primary"
               type="submit"
-              disabled={formLoading}
+              disabled={updateUserMutation.isPending}
               style={{ minWidth: 100 }}
             >
-              {formLoading ? (
+              {updateUserMutation.isPending ? (
                 <CircularProgress size={20} style={{ color: 'white' }} />
               ) : (
                 'Update User'

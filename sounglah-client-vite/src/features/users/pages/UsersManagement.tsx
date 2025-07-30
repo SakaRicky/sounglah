@@ -1,14 +1,12 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { SounglahTable } from '@/components/atoms/Table';
 import { getUserTableColumns } from '../components/UsersManagement/userTableColumns';
 import { CreateUserModal } from '../components/UsersManagement/CreateUserModal';
 import { EditUserModal } from '../components/UsersManagement/EditUserModal';
 import { DeleteConfirmationModal } from '@/components/atoms/DeleteConfirmationModal';
 import { UserCardList } from '../components/UsersManagement/UserCardList';
-import { getUsers, deleteUser } from '../api/users';
 import type { User } from '../api/users';
 import classes from './UsersManagement.module.scss';
-import { useNotification } from '@/contexts/NotificationContext';
 import { IconButton, Tooltip } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
@@ -18,44 +16,23 @@ import { LoadingSpinner } from '@/components/atoms/LoadingSpinner';
 import { useState as useStateAlias } from 'react';
 import { RoleManagementDrawer } from '../components/UsersManagement/RoleManagementDrawer';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { AxiosError } from 'axios';
+import { useUsers, useDeleteUser } from '../hooks/useUsers';
 
 export const UsersManagement: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [createModalOpened, setCreateModalOpened] = useState(false);
   const [editModalOpened, setEditModalOpened] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [deleteModalOpened, setDeleteModalOpened] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
   const [roleModalOpened, setRoleModalOpened] = useStateAlias(false);
-  const notify = useNotification();
+  
   const isMobile = useMediaQuery('(max-width: 768px)');
   const isMediumScreen = useMediaQuery('(min-width: 780px) and (max-width: 890px)');
 
-  // Fetch users
-  const fetchUsers = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await getUsers();
-      setUsers(response.users);
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
-      notify.notify({
-        type: 'error',
-        title: 'Failed to Load Users',
-        detail: 'An error occurred while loading users.'
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [notify]);
-
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+  // React Query hooks
+  const { data: users = [], isLoading, error } = useUsers();
+  const deleteUserMutation = useDeleteUser();
 
   // Selection handlers
   const handleSelectRow = useCallback((id: number, checked: boolean) => {
@@ -100,18 +77,8 @@ export const UsersManagement: React.FC = () => {
   const handleDeleteConfirm = useCallback(async () => {
     if (!userToDelete) return;
 
-    setDeleteLoading(true);
     try {
-      await deleteUser(userToDelete.id);
-      
-      notify.notify({
-        type: 'success',
-        title: 'User Deleted',
-        detail: `User "${userToDelete.username}" has been deleted successfully.`
-      });
-      
-      // Refresh the user list
-      fetchUsers();
+      await deleteUserMutation.mutateAsync(userToDelete.id);
       
       // Remove from selected IDs if it was selected
       setSelectedIds(prev => {
@@ -125,43 +92,24 @@ export const UsersManagement: React.FC = () => {
       setUserToDelete(null);
       
     } catch (error) {
+      // Error handling is done in the mutation hook
       console.error('Failed to delete user:', error);
-      
-      let errorMessage = 'Failed to delete user. Please try again.';
-      
-      if (error instanceof AxiosError) {
-        if (error.response?.status === 400) {
-          errorMessage = error.response.data.error || 'Cannot delete this user.';
-        } else if (error.response?.status === 404) {
-          errorMessage = 'User not found.';
-        } else if (error.response?.data?.error) {
-          errorMessage = error.response.data.error;
-        }
-      }
-      
-      notify.notify({
-        type: 'error',
-        title: 'Failed to Delete User',
-        detail: errorMessage
-      });
-    } finally {
-      setDeleteLoading(false);
     }
-  }, [userToDelete, notify, fetchUsers]);
+  }, [userToDelete, deleteUserMutation]);
 
   const handleDeleteCancel = useCallback(() => {
     setDeleteModalOpened(false);
     setUserToDelete(null);
-    setDeleteLoading(false);
   }, []);
 
   const handleCreateSuccess = useCallback(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    setCreateModalOpened(false);
+  }, []);
 
   const handleEditSuccess = useCallback(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    setEditModalOpened(false);
+    setSelectedUser(null);
+  }, []);
 
   const handleCloseCreateModal = useCallback(() => {
     setCreateModalOpened(false);
@@ -200,58 +148,61 @@ export const UsersManagement: React.FC = () => {
           </Tooltip>
         </div>
       ),
-    }), 
-    [selectedIds, handleSelectRow, selectAllChecked, selectAllIndeterminate, handleSelectAll, handleEditClick, handleDeleteClick, isMobile, isMediumScreen]
+    }),
+    [
+      selectedIds,
+      handleSelectRow,
+      selectAllChecked,
+      selectAllIndeterminate,
+      handleSelectAll,
+      handleEditClick,
+      handleDeleteClick,
+      isMobile,
+      isMediumScreen,
+    ]
   );
 
-  if (loading) {
+  // Loading state
+  if (isLoading) {
     return (
-      <div className={classes.container}>
-        <LoadingSpinner 
-          message="Loading users..." 
-          size="large"
-          fullHeight={false}
-        />
+      <div className={classes.loadingContainer}>
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className={classes.errorContainer}>
+        <p>Failed to load users. Please try again.</p>
       </div>
     );
   }
 
   return (
     <div className={classes.container}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className={classes.header}
-      >
+      <div className={classes.header}>
         <h1 className={classes.title}>User Management</h1>
         <p className={classes.subtitle}>
-          Manage system users, roles, and permissions
+          Manage user accounts, roles, and permissions
         </p>
-        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'center' }}>
+      </div>
+
+      {/* Desktop Add User Button */}
+      {!isMobile && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
           <SounglahButton
-            variant="secondary"
-            onClick={() => setRoleModalOpened(true)}
-            style={{ minWidth: 140, fontWeight: 600, fontSize: 15 }}
-            aria-label="Manage roles"
+            variant="primary"
+            onClick={() => setCreateModalOpened(true)}
+            style={{ minWidth: 140, fontWeight: 600, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}
+            aria-label="Add new user"
           >
-            Manage Roles
+            <PersonAddIcon style={{ fontSize: 22 }} />
+            Add User
           </SounglahButton>
         </div>
-      </motion.div>
-
-      {/* Add User Button (desktop only, hidden on mobile by SCSS) */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
-        <SounglahButton
-          variant="primary"
-          onClick={() => setCreateModalOpened(true)}
-          style={{ minWidth: 140, fontWeight: 600, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}
-          aria-label="Add new user"
-        >
-          <PersonAddIcon style={{ fontSize: 22 }} />
-          Add User
-        </SounglahButton>
-      </div>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -333,7 +284,7 @@ export const UsersManagement: React.FC = () => {
             message="Are you sure you want to delete this user?"
             itemName={userToDelete.username}
             itemType="user"
-            loading={deleteLoading}
+            loading={deleteUserMutation.isPending}
           />
         )}
         <RoleManagementDrawer open={roleModalOpened} onClose={() => setRoleModalOpened(false)} />
