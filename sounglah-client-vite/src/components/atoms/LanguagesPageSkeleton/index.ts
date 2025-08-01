@@ -1,0 +1,1 @@
+export { LanguagesPageSkeleton } from './LanguagesPageSkeleton'; 

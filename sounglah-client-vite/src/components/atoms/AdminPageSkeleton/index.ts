@@ -1,0 +1,1 @@
+export { AdminPageSkeleton } from './AdminPageSkeleton'; 

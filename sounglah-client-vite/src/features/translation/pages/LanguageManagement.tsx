@@ -5,17 +5,27 @@ import { CreateLanguageModal } from '../components/LanguageManagement/CreateLang
 import { EditLanguageModal } from '../components/LanguageManagement/EditLanguageModal';
 import { LanguageCardList } from '../components/LanguageManagement/LanguageCardList';
 import { DeleteConfirmationModal } from '@/components/atoms/DeleteConfirmationModal';
-import type { Language } from '../api/languages';
 import classes from './LanguageManagement.module.scss';
 import { IconButton, Tooltip } from '@mui/material';
 import LanguageIcon from '@mui/icons-material/Language';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SounglahButton } from '@/components/atoms/SounglahButton/SounglahButton';
-import { LoadingSpinner } from '@/components/atoms/LoadingSpinner';
+import { LanguagesPageSkeleton } from '@/components/atoms/LanguagesPageSkeleton';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { useLanguages, useDeleteLanguage } from '../hooks/useLanguages';
+import { useDeleteLanguage } from '../hooks/useLanguages';
+import type { Language } from '../api/languages';
 
-export const LanguageManagement: React.FC = () => {
+interface LanguageManagementProps {
+  languages: Language[];
+  isLoading?: boolean;
+  error?: Error | null;
+}
+
+export const LanguageManagement: React.FC<LanguageManagementProps> = ({ 
+  languages = [], 
+  isLoading = false, 
+  error = null 
+}) => {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [createModalOpened, setCreateModalOpened] = useState(false);
   const [editModalOpened, setEditModalOpened] = useState(false);
@@ -25,7 +35,6 @@ export const LanguageManagement: React.FC = () => {
   const isMobile = useMediaQuery('(max-width: 768px)');
 
   // React Query hooks
-  const { data: languages = [], isLoading, error } = useLanguages();
   const deleteLanguageMutation = useDeleteLanguage();
 
   // Selection handlers
@@ -124,7 +133,6 @@ export const LanguageManagement: React.FC = () => {
       handleSelectAll,
       handleEditClick,
       handleDeleteClick,
-      isMobile,
       actionsHeader: (
         <div className={classes.tableHeaderActions}>
           <Tooltip title="Add Language">
@@ -150,17 +158,12 @@ export const LanguageManagement: React.FC = () => {
       handleSelectAll,
       handleEditClick,
       handleDeleteClick,
-      isMobile,
     ]
   );
 
-  // Loading state
+  // Loading state - show skeleton instead of full-screen loading
   if (isLoading) {
-    return (
-      <div className={classes.loadingContainer}>
-        <LoadingSpinner />
-      </div>
-    );
+    return <LanguagesPageSkeleton />;
   }
 
   // Error state

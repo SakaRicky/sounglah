@@ -1,0 +1,71 @@
+@use "@/styles/colors" as *;
+@use "@/styles/breakpoints" as *;
+
+.pageBg {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 56px;
+  gap: 1.5rem;
+
+  @media (max-width: 768px) {
+    padding-bottom: 160px;
+  }
+}
+
+.segmentedControl {
+  margin-bottom: 1rem;
+}
+
+.header {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.statsContainer {
+  width: 100%;
+  max-width: 1200px;
+  margin-bottom: 1.5rem;
+}
+
+.filtersRow {
+  width: 100%;
+  max-width: 1200px;
+  margin-bottom: 1rem;
+}
+
+.filterChips {
+  width: 100%;
+  max-width: 1200px;
+  margin-bottom: 1rem;
+}
+
+.tableContainer {
+  width: 100%;
+  max-width: 1200px;
+  background: linear-gradient(135deg, $color-beige-0, $color-beige-1);
+  border: 2px solid $color-brown-2;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba($color-brown-5, 0.1);
+}
+
+.statCard {
+  background: linear-gradient(135deg, $color-beige-0, $color-beige-1);
+  border: 2px solid $color-brown-2;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba($color-brown-5, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pagination {
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+} 

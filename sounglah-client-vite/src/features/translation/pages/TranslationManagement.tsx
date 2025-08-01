@@ -36,7 +36,7 @@ import { FaLanguage } from "react-icons/fa";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import CancelIcon from '@mui/icons-material/Cancel';
-import { LoadingSpinner } from '@/components/atoms/LoadingSpinner';
+import { AdminPageSkeleton } from '@/components/atoms/AdminPageSkeleton';
 import { 
   useTranslations, 
   useLanguages, 
@@ -111,7 +111,7 @@ export default function TranslationManagement() {
     error: translationsError 
   } = useTranslations(queryParams);
   
-  const { data: languages = [] } = useLanguages();
+  const { data: languages = [], isLoading: languagesLoading, error: languagesError } = useLanguages();
   const { data: reviewers = [] } = useUsers('reviewer');
   const bulkUpdateMutation = useBulkUpdateTranslations();
 
@@ -517,13 +517,9 @@ export default function TranslationManagement() {
     return () => window.removeEventListener('resize', checkScroll);
   }, [isMobile, translations]);
 
-  // Loading state
+  // Loading state - show skeleton instead of full-screen loading
   if (translationsLoading) {
-    return (
-      <div className={classes.loadingContainer}>
-        <LoadingSpinner />
-      </div>
-    );
+    return <AdminPageSkeleton />;
   }
 
   // Error state
@@ -569,7 +565,11 @@ export default function TranslationManagement() {
         <UsersManagement />
       )}
       {selectedTable === 'languages' && (
-        <LanguageManagement />
+        <LanguageManagement 
+          languages={languages}
+          isLoading={languagesLoading}
+          error={languagesError}
+        />
       )}
       <CreateTranslationModal
         opened={modalOpen}

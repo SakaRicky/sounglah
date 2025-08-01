@@ -12,7 +12,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SounglahButton } from '@/components/atoms/SounglahButton/SounglahButton';
-import { LoadingSpinner } from '@/components/atoms/LoadingSpinner';
+import { UsersPageSkeleton } from '@/components/atoms/UsersPageSkeleton';
 import { useState as useStateAlias } from 'react';
 import { RoleManagementDrawer } from '../components/UsersManagement/RoleManagementDrawer';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -162,13 +162,9 @@ export const UsersManagement: React.FC = () => {
     ]
   );
 
-  // Loading state
+  // Loading state - show skeleton instead of full-screen loading
   if (isLoading) {
-    return (
-      <div className={classes.loadingContainer}>
-        <LoadingSpinner />
-      </div>
-    );
+    return <UsersPageSkeleton />;
   }
 
   // Error state
