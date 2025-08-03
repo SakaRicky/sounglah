@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { SounglahTable } from '@/components/atoms/Table';
 import { getUserTableColumns } from '../components/UsersManagement/userTableColumns';
 import { CreateUserModal } from '../components/UsersManagement/CreateUserModal';
@@ -12,20 +12,18 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SounglahButton } from '@/components/atoms/SounglahButton/SounglahButton';
-import { UsersPageSkeleton } from '@/components/atoms/UsersPageSkeleton';
-import { useState as useStateAlias } from 'react';
+import { UsersPageSkeleton, ErrorDisplay } from '@/components/atoms';
 import { RoleManagementDrawer } from '../components/UsersManagement/RoleManagementDrawer';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useUsers, useDeleteUser } from '../hooks/useUsers';
+import { useModalState, useSelectionState, useErrorHandler } from '@/hooks';
 
 export const UsersManagement: React.FC = () => {
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [createModalOpened, setCreateModalOpened] = useState(false);
-  const [editModalOpened, setEditModalOpened] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [deleteModalOpened, setDeleteModalOpened] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<User | null>(null);
-  const [roleModalOpened, setRoleModalOpened] = useStateAlias(false);
+  // Standardized modal state management
+  const [createModalState, createModalHandlers] = useModalState();
+  const [editModalState, editModalHandlers] = useModalState<User>();
+  const [deleteModalState, deleteModalHandlers] = useModalState<User>();
+  const [roleModalState, roleModalHandlers] = useModalState();
   
   const isMobile = useMediaQuery('(max-width: 768px)');
   const isMediumScreen = useMediaQuery('(min-width: 780px) and (max-width: 890px)');
@@ -34,100 +32,70 @@ export const UsersManagement: React.FC = () => {
   const { data: users = [], isLoading, error } = useUsers();
   const deleteUserMutation = useDeleteUser();
 
-  // Selection handlers
-  const handleSelectRow = useCallback((id: number, checked: boolean) => {
-    setSelectedIds(prev => {
-      const newSet = new Set(prev);
-      if (checked) {
-        newSet.add(id);
-      } else {
-        newSet.delete(id);
-      }
-      return newSet;
-    });
-  }, []);
+  // Standardized selection state management
+  const [selectionState, selectionHandlers] = useSelectionState(users, [users]);
 
-  const handleSelectAll = useCallback((checked: boolean) => {
-    if (checked) {
-      setSelectedIds(new Set(users.map(user => user.id)));
-    } else {
-      setSelectedIds(new Set());
-    }
-  }, [users]);
-
-  const selectAllChecked = useMemo(() => {
-    return users.length > 0 && selectedIds.size === users.length;
-  }, [users.length, selectedIds.size]);
-
-  const selectAllIndeterminate = useMemo(() => {
-    return selectedIds.size > 0 && selectedIds.size < users.length;
-  }, [selectedIds.size, users.length]);
+  // Standardized error handling
+  const { handleAsyncError } = useErrorHandler();
 
   // Action handlers
   const handleEditClick = useCallback((user: User) => {
-    setSelectedUser(user);
-    setEditModalOpened(true);
-  }, []);
+    editModalHandlers.openEdit(user);
+  }, [editModalHandlers]);
 
   const handleDeleteClick = useCallback((user: User) => {
-    setUserToDelete(user);
-    setDeleteModalOpened(true);
-  }, []);
+    deleteModalHandlers.openEdit(user);
+  }, [deleteModalHandlers]);
 
   const handleDeleteConfirm = useCallback(async () => {
-    if (!userToDelete) return;
+    if (!deleteModalState.data) return;
 
-    try {
-      await deleteUserMutation.mutateAsync(userToDelete.id);
-      
-      // Remove from selected IDs if it was selected
-      setSelectedIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(userToDelete.id);
-        return newSet;
-      });
-      
-      // Close the modal
-      setDeleteModalOpened(false);
-      setUserToDelete(null);
-      
-    } catch (error) {
-      // Error handling is done in the mutation hook
-      console.error('Failed to delete user:', error);
-    }
-  }, [userToDelete, deleteUserMutation]);
+    await handleAsyncError(
+      async () => {
+        await deleteUserMutation.mutateAsync(deleteModalState.data!.id);
+        
+        // Remove from selected IDs if it was selected
+        selectionHandlers.selectItem(deleteModalState.data!.id, false);
+        
+        // Close the modal
+        deleteModalHandlers.close();
+      },
+      {
+        errorTitle: 'Failed to Delete User',
+        errorDetail: 'Unable to delete the user. Please try again.',
+        context: { userId: deleteModalState.data?.id, action: 'delete_user' },
+      }
+    );
+  }, [deleteModalState.data, deleteUserMutation, deleteModalHandlers, selectionHandlers, handleAsyncError]);
 
   const handleDeleteCancel = useCallback(() => {
-    setDeleteModalOpened(false);
-    setUserToDelete(null);
-  }, []);
+    deleteModalHandlers.close();
+  }, [deleteModalHandlers]);
 
   const handleCreateSuccess = useCallback(() => {
-    setCreateModalOpened(false);
-  }, []);
+    createModalHandlers.close();
+  }, [createModalHandlers]);
 
   const handleEditSuccess = useCallback(() => {
-    setEditModalOpened(false);
-    setSelectedUser(null);
-  }, []);
+    editModalHandlers.close();
+  }, [editModalHandlers]);
 
   const handleCloseCreateModal = useCallback(() => {
-    setCreateModalOpened(false);
-  }, []);
+    createModalHandlers.close();
+  }, [createModalHandlers]);
 
   const handleCloseEditModal = useCallback(() => {
-    setEditModalOpened(false);
-    setSelectedUser(null);
-  }, []);
+    editModalHandlers.close();
+  }, [editModalHandlers]);
 
   // Table columns
   const userTableColumns = useMemo(() => 
     getUserTableColumns({
-      selectedIds,
-      handleSelectRow,
-      selectAllChecked,
-      selectAllIndeterminate,
-      handleSelectAll,
+      selectedIds: selectionState.selectedIds,
+      handleSelectRow: selectionHandlers.selectItem,
+      selectAllChecked: selectionState.selectAllChecked,
+      selectAllIndeterminate: selectionState.selectAllIndeterminate,
+      handleSelectAll: selectionHandlers.selectAll,
       handleEditClick,
       handleDeleteClick,
       isMobile,
@@ -137,7 +105,7 @@ export const UsersManagement: React.FC = () => {
           <Tooltip title="Add User">
             <span>
               <IconButton
-                onClick={() => setCreateModalOpened(true)}
+                onClick={() => createModalHandlers.openAdd()}
                 size="small"
                 style={{ color: 'var(--mantine-color-brown-1)' }}
                 aria-label="Add new user"
@@ -150,15 +118,13 @@ export const UsersManagement: React.FC = () => {
       ),
     }),
     [
-      selectedIds,
-      handleSelectRow,
-      selectAllChecked,
-      selectAllIndeterminate,
-      handleSelectAll,
+      selectionState,
+      selectionHandlers,
       handleEditClick,
       handleDeleteClick,
       isMobile,
       isMediumScreen,
+      createModalHandlers,
     ]
   );
 
@@ -170,9 +136,10 @@ export const UsersManagement: React.FC = () => {
   // Error state
   if (error) {
     return (
-      <div className={classes.errorContainer}>
-        <p>Failed to load users. Please try again.</p>
-      </div>
+      <ErrorDisplay
+        title="Failed to Load Users"
+        message="Unable to load user data. Please check your connection and try again."
+      />
     );
   }
 
@@ -190,7 +157,7 @@ export const UsersManagement: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
           <SounglahButton
             variant="primary"
-            onClick={() => setCreateModalOpened(true)}
+            onClick={() => createModalHandlers.openAdd()}
             style={{ minWidth: 140, fontWeight: 600, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}
             aria-label="Add new user"
           >
@@ -219,8 +186,8 @@ export const UsersManagement: React.FC = () => {
         ) : (
           <UserCardList
             users={users}
-            selectedIds={selectedIds}
-            onSelectUser={handleSelectRow}
+            selectedIds={selectionState.selectedIds}
+            onSelectUser={selectionHandlers.selectItem}
             onEditUser={handleEditClick}
             onDeleteUser={handleDeleteClick}
           />
@@ -231,7 +198,7 @@ export const UsersManagement: React.FC = () => {
           <div className={classes.floatingActionButtons}>
             <Tooltip title="Add User" placement="left">
               <IconButton
-                onClick={() => setCreateModalOpened(true)}
+                onClick={() => createModalHandlers.openAdd()}
                 size="large"
                 aria-label="Add User"
                 className={classes.fab}
@@ -242,7 +209,7 @@ export const UsersManagement: React.FC = () => {
             </Tooltip>
             <Tooltip title="Manage Roles" placement="left">
               <IconButton
-                onClick={() => setRoleModalOpened(true)}
+                onClick={() => roleModalHandlers.openAdd()}
                 size="large"
                 aria-label="Manage Roles"
                 className={classes.fab}
@@ -256,34 +223,34 @@ export const UsersManagement: React.FC = () => {
       </motion.div>
 
       <AnimatePresence>
-        {createModalOpened && (
+        {createModalState.isOpen && (
           <CreateUserModal
-            opened={createModalOpened}
+            opened={createModalState.isOpen}
             onClose={handleCloseCreateModal}
             onSuccess={handleCreateSuccess}
           />
         )}
-        {editModalOpened && selectedUser && (
+        {editModalState.isOpen && editModalState.data && (
           <EditUserModal
-            opened={editModalOpened}
+            opened={editModalState.isOpen}
             onClose={handleCloseEditModal}
             onSuccess={handleEditSuccess}
-            user={selectedUser}
+            user={editModalState.data}
           />
         )}
-        {deleteModalOpened && userToDelete && (
+        {deleteModalState.isOpen && deleteModalState.data && (
           <DeleteConfirmationModal
-            opened={deleteModalOpened}
+            opened={deleteModalState.isOpen}
             onClose={handleDeleteCancel}
             onConfirm={handleDeleteConfirm}
             title="Delete User"
             message="Are you sure you want to delete this user?"
-            itemName={userToDelete.username}
+            itemName={deleteModalState.data.username}
             itemType="user"
             loading={deleteUserMutation.isPending}
           />
         )}
-        <RoleManagementDrawer open={roleModalOpened} onClose={() => setRoleModalOpened(false)} />
+        <RoleManagementDrawer open={roleModalState.isOpen} onClose={() => roleModalHandlers.close()} />
       </AnimatePresence>
     </div>
   );

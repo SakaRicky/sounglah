@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { SounglahTable } from '@/components/atoms/Table';
 import { getLanguageTableColumns } from '../components/LanguageManagement/languageTableColumns';
 import { CreateLanguageModal } from '../components/LanguageManagement/CreateLanguageModal';
@@ -10,10 +10,11 @@ import { IconButton, Tooltip } from '@mui/material';
 import LanguageIcon from '@mui/icons-material/Language';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SounglahButton } from '@/components/atoms/SounglahButton/SounglahButton';
-import { LanguagesPageSkeleton } from '@/components/atoms/LanguagesPageSkeleton';
+import { LanguagesPageSkeleton, ErrorDisplay } from '@/components/atoms';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useDeleteLanguage } from '../hooks/useLanguages';
 import type { Language } from '../api/languages';
+import { useModalState, useSelectionState, useErrorHandler } from '@/hooks';
 
 interface LanguageManagementProps {
   languages: Language[];
@@ -26,111 +27,80 @@ export const LanguageManagement: React.FC<LanguageManagementProps> = ({
   isLoading = false, 
   error = null 
 }) => {
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [createModalOpened, setCreateModalOpened] = useState(false);
-  const [editModalOpened, setEditModalOpened] = useState(false);
-  const [editLanguage, setEditLanguage] = useState<Language | null>(null);
-  const [deleteModalOpened, setDeleteModalOpened] = useState(false);
-  const [languageToDelete, setLanguageToDelete] = useState<Language | null>(null);
+  // Standardized modal state management
+  const [createModalState, createModalHandlers] = useModalState();
+  const [editModalState, editModalHandlers] = useModalState<Language>();
+  const [deleteModalState, deleteModalHandlers] = useModalState<Language>();
+  
   const isMobile = useMediaQuery('(max-width: 768px)');
 
   // React Query hooks
   const deleteLanguageMutation = useDeleteLanguage();
 
-  // Selection handlers
-  const handleSelectRow = useCallback((id: number, checked: boolean) => {
-    setSelectedIds(prev => {
-      const newSet = new Set(prev);
-      if (checked) {
-        newSet.add(id);
-      } else {
-        newSet.delete(id);
-      }
-      return newSet;
-    });
-  }, []);
+  // Standardized selection state management
+  const [selectionState, selectionHandlers] = useSelectionState(languages, [languages]);
 
-  const handleSelectAll = useCallback((checked: boolean) => {
-    if (checked) {
-      setSelectedIds(new Set(languages.map(lang => lang.id)));
-    } else {
-      setSelectedIds(new Set());
-    }
-  }, [languages]);
-
-  const selectAllChecked = useMemo(() => {
-    return languages.length > 0 && selectedIds.size === languages.length;
-  }, [languages.length, selectedIds.size]);
-
-  const selectAllIndeterminate = useMemo(() => {
-    return selectedIds.size > 0 && selectedIds.size < languages.length;
-  }, [selectedIds.size, languages.length]);
+  // Standardized error handling
+  const { handleAsyncError } = useErrorHandler();
 
   // Action handlers
   const handleEditClick = useCallback((language: Language) => {
-    setEditLanguage(language);
-    setEditModalOpened(true);
-  }, []);
+    editModalHandlers.openEdit(language);
+  }, [editModalHandlers]);
 
   const handleDeleteClick = useCallback((language: Language) => {
-    setLanguageToDelete(language);
-    setDeleteModalOpened(true);
-  }, []);
+    deleteModalHandlers.openEdit(language);
+  }, [deleteModalHandlers]);
 
   const handleDeleteConfirm = useCallback(async () => {
-    if (!languageToDelete) return;
+    if (!deleteModalState.data) return;
 
-    try {
-      await deleteLanguageMutation.mutateAsync(languageToDelete.id);
+    await handleAsyncError(
+      async () => {
+        await deleteLanguageMutation.mutateAsync(deleteModalState.data!.id);
 
-      // Remove from selected IDs if it was selected
-      setSelectedIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(languageToDelete.id);
-        return newSet;
-      });
+        // Remove from selected IDs if it was selected
+        selectionHandlers.selectItem(deleteModalState.data!.id, false);
 
-      // Close the modal
-      setDeleteModalOpened(false);
-      setLanguageToDelete(null);
-
-    } catch (error) {
-      // Error handling is done in the mutation hook
-      console.error('Failed to delete language:', error);
-    }
-  }, [languageToDelete, deleteLanguageMutation]);
+        // Close the modal
+        deleteModalHandlers.close();
+      },
+      {
+        errorTitle: 'Failed to Delete Language',
+        errorDetail: 'Unable to delete the language. Please try again.',
+        context: { languageId: deleteModalState.data?.id, action: 'delete_language' },
+      }
+    );
+  }, [deleteModalState.data, deleteLanguageMutation, deleteModalHandlers, selectionHandlers, handleAsyncError]);
 
   const handleDeleteCancel = useCallback(() => {
-    setDeleteModalOpened(false);
-    setLanguageToDelete(null);
-  }, []);
+    deleteModalHandlers.close();
+  }, [deleteModalHandlers]);
 
   const handleCreateSuccess = useCallback(() => {
-    setCreateModalOpened(false);
-  }, []);
+    createModalHandlers.close();
+  }, [createModalHandlers]);
 
   const handleEditSuccess = useCallback(() => {
-    setEditModalOpened(false);
-    setEditLanguage(null);
-  }, []);
+    editModalHandlers.close();
+  }, [editModalHandlers]);
 
   const handleCloseCreateModal = useCallback(() => {
-    setCreateModalOpened(false);
-  }, []);
+    createModalHandlers.close();
+  }, [createModalHandlers]);
 
   const handleCloseEditModal = useCallback(() => {
-    setEditModalOpened(false);
-    setEditLanguage(null);
-  }, []);
+    editModalHandlers.close();
+  }, [editModalHandlers]);
 
   // Table columns
   const languageTableColumns = useMemo(() =>
     getLanguageTableColumns({
-      selectedIds,
-      handleSelectRow,
-      selectAllChecked,
-      selectAllIndeterminate,
-      handleSelectAll,
+      selectedIds: selectionState.selectedIds,
+      handleSelectRow: selectionHandlers.selectItem,
+      selectAllChecked: selectionState.selectAllChecked,
+      selectAllIndeterminate: selectionState.selectAllIndeterminate,
+      handleSelectAll: selectionHandlers.selectAll,
       handleEditClick,
       handleDeleteClick,
       actionsHeader: (
@@ -138,7 +108,7 @@ export const LanguageManagement: React.FC<LanguageManagementProps> = ({
           <Tooltip title="Add Language">
             <span>
               <IconButton
-                onClick={() => setCreateModalOpened(true)}
+                onClick={() => createModalHandlers.openAdd()}
                 size="small"
                 style={{ color: 'var(--mantine-color-brown-1)' }}
                 aria-label="Add new language"
@@ -151,13 +121,11 @@ export const LanguageManagement: React.FC<LanguageManagementProps> = ({
       ),
     }),
     [
-      selectedIds,
-      handleSelectRow,
-      selectAllChecked,
-      selectAllIndeterminate,
-      handleSelectAll,
+      selectionState,
+      selectionHandlers,
       handleEditClick,
       handleDeleteClick,
+      createModalHandlers,
     ]
   );
 
@@ -169,9 +137,10 @@ export const LanguageManagement: React.FC<LanguageManagementProps> = ({
   // Error state
   if (error) {
     return (
-      <div className={classes.errorContainer}>
-        <p>Failed to load languages. Please try again.</p>
-      </div>
+      <ErrorDisplay
+        title="Failed to Load Languages"
+        message="Unable to load language data. Please check your connection and try again."
+      />
     );
   }
 
@@ -189,7 +158,7 @@ export const LanguageManagement: React.FC<LanguageManagementProps> = ({
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
           <SounglahButton
             variant="primary"
-            onClick={() => setCreateModalOpened(true)}
+            onClick={() => createModalHandlers.openAdd()}
             style={{ minWidth: 140, fontWeight: 600, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}
             aria-label="Add new language"
           >
@@ -218,8 +187,8 @@ export const LanguageManagement: React.FC<LanguageManagementProps> = ({
         ) : (
           <LanguageCardList
             languages={languages}
-            selectedIds={selectedIds}
-            onSelectLanguage={handleSelectRow}
+            selectedIds={selectionState.selectedIds}
+            onSelectLanguage={selectionHandlers.selectItem}
             onEditLanguage={handleEditClick}
             onDeleteLanguage={handleDeleteClick}
           />
@@ -230,7 +199,7 @@ export const LanguageManagement: React.FC<LanguageManagementProps> = ({
           <div className={classes.floatingActionButtons}>
             <Tooltip title="Add Language" placement="left">
               <IconButton
-                onClick={() => setCreateModalOpened(true)}
+                onClick={() => createModalHandlers.openAdd()}
                 size="large"
                 aria-label="Add Language"
                 className={classes.fab}
@@ -244,29 +213,29 @@ export const LanguageManagement: React.FC<LanguageManagementProps> = ({
       </motion.div>
 
       <AnimatePresence>
-        {createModalOpened && (
+        {createModalState.isOpen && (
           <CreateLanguageModal
-            opened={createModalOpened}
+            opened={createModalState.isOpen}
             onClose={handleCloseCreateModal}
             onSuccess={handleCreateSuccess}
           />
         )}
-        {editModalOpened && editLanguage && (
+        {editModalState.isOpen && editModalState.data && (
           <EditLanguageModal
-            opened={editModalOpened}
+            opened={editModalState.isOpen}
             onClose={handleCloseEditModal}
             onSuccess={handleEditSuccess}
-            language={editLanguage}
+            language={editModalState.data}
           />
         )}
-        {deleteModalOpened && languageToDelete && (
+        {deleteModalState.isOpen && deleteModalState.data && (
           <DeleteConfirmationModal
-            opened={deleteModalOpened}
+            opened={deleteModalState.isOpen}
             onClose={handleDeleteCancel}
             onConfirm={handleDeleteConfirm}
             title="Delete Language"
             message="Are you sure you want to delete this language?"
-            itemName={languageToDelete.name}
+            itemName={deleteModalState.data.name}
             itemType="language"
             loading={deleteLanguageMutation.isPending}
           />

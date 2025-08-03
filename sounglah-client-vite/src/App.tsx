@@ -11,36 +11,39 @@ import Translation from "./features/translation/pages/Translation";
 import TranslationManagement from "./features/translation/pages/TranslationManagement";
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { queryClient } from '@/lib/queryClient';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 function App() {
 	return (
 		<QueryClientProvider client={queryClient}>
-			<NotificationProvider>
-				<Router>
-					<AuthProvider>
-						<div className={classes.body}>
-							<Header />
-							
-							<main className={classes.main}>
-								<Routes>
-									<Route path="/" element={<Landing />} />
-									<Route path="/translate" element={<Translation />} />
-									<Route path="/login" element={<Login />} />
-									<Route 
-										path="/admin" 
-										element={
-											<ProtectedRoute>
-												<TranslationManagement />
-											</ProtectedRoute>
-										} 
-									/>
-								</Routes>
-							</main>
-							<Footer />
-						</div>
-					</AuthProvider>
-				</Router>
-			</NotificationProvider>
+			<ErrorBoundary>
+				<NotificationProvider>
+					<Router>
+						<AuthProvider>
+							<div className={classes.body}>
+								<Header />
+								
+								<main className={classes.main}>
+									<Routes>
+										<Route path="/" element={<Landing />} />
+										<Route path="/translate" element={<Translation />} />
+										<Route path="/login" element={<Login />} />
+										<Route 
+											path="/admin" 
+											element={
+												<ProtectedRoute>
+													<TranslationManagement />
+												</ProtectedRoute>
+											} 
+										/>
+									</Routes>
+								</main>
+								<Footer />
+							</div>
+						</AuthProvider>
+					</Router>
+				</NotificationProvider>
+			</ErrorBoundary>
 			<ReactQueryDevtools initialIsOpen={false} />
 		</QueryClientProvider>
 	);

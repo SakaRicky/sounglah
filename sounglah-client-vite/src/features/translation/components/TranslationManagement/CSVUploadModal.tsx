@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
@@ -10,6 +10,7 @@ import type { UploadCSVResult } from '../../api/translations';
 import classes from './CSVUploadModal.module.scss';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useFormState } from '@/hooks/useFormState';
 
 interface CSVUploadModalProps {
   opened: boolean;
@@ -23,41 +24,43 @@ interface PreviewRow {
 }
 
 export const CSVUploadModal = React.memo<CSVUploadModalProps>(({ opened, onClose }) => {
-  const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
-  const [fileError, setFileError] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [uploadResult, setUploadResult] = useState<UploadCSVResult | { error: string } | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [sourceLang, setSourceLang] = useState<string>('');
-  const [targetLang, setTargetLang] = useState<string>('');
+  // Standardized form state management
+  const [formState, formHandlers] = useFormState({
+    previewRows: [] as PreviewRow[],
+    fileError: null as string | null,
+    fileName: null as string | null,
+    uploadResult: null as UploadCSVResult | { error: string } | null,
+    sourceLang: '',
+    targetLang: '',
+  });
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFileError(null);
-    setUploadResult(null);
+    formHandlers.setField('fileError', null);
+    formHandlers.setField('uploadResult', null);
     const file = e.target.files?.[0];
     if (!file) return;
-    setFileName(file.name);
+    formHandlers.setField('fileName', file.name);
     Papa.parse(file, {
       skipEmptyLines: true,
       complete: (result: ParseResult<string[]>) => {
         if (!result.data || result.data.length < 2) {
-          setFileError('CSV must have at least 2 rows: language header and at least one translation pair.');
-          setPreviewRows([]);
-          setSourceLang('');
-          setTargetLang('');
+          formHandlers.setField('fileError', 'CSV must have at least 2 rows: language header and at least one translation pair.');
+          formHandlers.setField('previewRows', []);
+          formHandlers.setField('sourceLang', '');
+          formHandlers.setField('targetLang', '');
           return;
         }
         // First row: language names
         const langRow = result.data[0] as string[];
         if (!langRow[0] || !langRow[1]) {
-          setFileError('First row must specify source and target language names.');
-          setPreviewRows([]);
-          setSourceLang('');
-          setTargetLang('');
+          formHandlers.setField('fileError', 'First row must specify source and target language names.');
+          formHandlers.setField('previewRows', []);
+          formHandlers.setField('sourceLang', '');
+          formHandlers.setField('targetLang', '');
           return;
         }
-        setSourceLang(langRow[0]);
-        setTargetLang(langRow[1]);
+        formHandlers.setField('sourceLang', langRow[0]);
+        formHandlers.setField('targetLang', langRow[1]);
         // Remaining rows: translation pairs
         const rows: PreviewRow[] = (result.data as string[][]).slice(1).map((row) => {
           const r: PreviewRow = {
@@ -69,50 +72,47 @@ export const CSVUploadModal = React.memo<CSVUploadModalProps>(({ opened, onClose
           }
           return r;
         });
-        setPreviewRows(rows);
+        formHandlers.setField('previewRows', rows);
       },
       error: (err: Error) => {
-        setFileError('Failed to parse CSV: ' + err.message);
-        setPreviewRows([]);
-        setSourceLang('');
-        setTargetLang('');
+        formHandlers.setField('fileError', 'Failed to parse CSV: ' + err.message);
+        formHandlers.setField('previewRows', []);
+        formHandlers.setField('sourceLang', '');
+        formHandlers.setField('targetLang', '');
       },
     });
   }, []);
 
   const handleUpload = useCallback(async () => {
-    if (!sourceLang || !targetLang) return;
-    const validRows = previewRows.filter(r => !r.error);
-    setUploading(true);
-    setUploadResult(null);
+    if (!formState.data.sourceLang || !formState.data.targetLang) return;
+    const validRows = formState.data.previewRows.filter(r => !r.error);
+    formHandlers.setLoading(true);
+    formHandlers.setField('uploadResult', null);
     try {
       const result = await uploadTranslationsCSV(
         validRows.map(r => ({
           source_text: r.source_text,
           target_text: r.target_text,
-          source_language: sourceLang,
-          target_language: targetLang,
+          source_language: formState.data.sourceLang,
+          target_language: formState.data.targetLang,
         }))
       );
-      setUploadResult(result);
-      setPreviewRows([]);
-      setFileName(null);
-      setSourceLang('');
-      setTargetLang('');
+      formHandlers.setField('uploadResult', result);
+      formHandlers.setField('previewRows', []);
+      formHandlers.setField('fileName', null);
+      formHandlers.setField('sourceLang', '');
+      formHandlers.setField('targetLang', '');
     } catch (err) {
-      setUploadResult({ error: err instanceof Error ? err.message : 'Upload failed' });
+      formHandlers.setField('uploadResult', { error: err instanceof Error ? err.message : 'Upload failed' });
     } finally {
-      setUploading(false);
+      formHandlers.setLoading(false);
     }
-  }, [previewRows, sourceLang, targetLang]);
+  }, [formState.data]);
 
   const handleClose = useCallback(() => {
-    setPreviewRows([]);
-    setFileName(null);
-    setFileError(null);
-    setSourceLang('');
-    setTargetLang('');
-    setUploadResult(null);
+    formHandlers.reset();
+    formHandlers.clearAllErrors();
+    formHandlers.setLoading(false);
     onClose();
   }, [onClose]);
 
@@ -122,16 +122,16 @@ export const CSVUploadModal = React.memo<CSVUploadModalProps>(({ opened, onClose
 
   // Memoize computed values
   const isValidUpload = useMemo(() => {
-    return previewRows.length > 0 && 
-           !previewRows.some(r => r.error) && 
-           !uploading && 
-           sourceLang && 
-           targetLang;
-  }, [previewRows, uploading, sourceLang, targetLang]);
+    return formState.data.previewRows.length > 0 && 
+           !formState.data.previewRows.some(r => r.error) && 
+           !formState.isLoading && 
+           formState.data.sourceLang && 
+           formState.data.targetLang;
+  }, [formState.data, formState.isLoading]);
 
   const validRowsCount = useMemo(() => {
-    return previewRows.filter(r => !r.error).length;
-  }, [previewRows]);
+    return formState.data.previewRows.filter(r => !r.error).length;
+  }, [formState.data.previewRows]);
 
   return (
     <Dialog open={opened} onClose={handleClose} maxWidth="md" fullWidth PaperProps={{
@@ -169,18 +169,18 @@ export const CSVUploadModal = React.memo<CSVUploadModalProps>(({ opened, onClose
                   className={classes.uploadButton}
                   disabled={!isValidUpload}
                 >
-                  {uploading ? 'Uploading...' : 'Upload'}
+                  {formState.isLoading ? 'Uploading...' : 'Upload'}
                 </SounglahButton>
               </div>
-              {fileName && <div className={classes.selectedFile}>Selected: <b>{fileName}</b></div>}
-              {fileError && <div className={classes.errorText}>{fileError}</div>}
-              {sourceLang && targetLang && (
+              {formState.data.fileName && <div className={classes.selectedFile}>Selected: <b>{formState.data.fileName}</b></div>}
+              {formState.data.fileError && <div className={classes.errorText}>{formState.data.fileError}</div>}
+              {formState.data.sourceLang && formState.data.targetLang && (
                 <div className={classes.languageInfo}>
-                  <span>Source Language: <b>{sourceLang}</b></span>
-                  <span style={{ marginLeft: 32 }}>Target Language: <b>{targetLang}</b></span>
+                  <span>Source Language: <b>{formState.data.sourceLang}</b></span>
+                  <span style={{ marginLeft: 32 }}>Target Language: <b>{formState.data.targetLang}</b></span>
                 </div>
               )}
-              {previewRows.length > 0 && (
+              {formState.data.previewRows.length > 0 && (
                 <>
                   <div className={classes.languageInfo} style={{ marginBottom: 8 }}>
                     {`Total translation pairs: ${validRowsCount}`}
@@ -195,7 +195,7 @@ export const CSVUploadModal = React.memo<CSVUploadModalProps>(({ opened, onClose
                         </tr>
                       </thead>
                       <tbody>
-                        {previewRows.map((row, i) => (
+                        {formState.data.previewRows.map((row, i) => (
                           <tr key={row.source_text + row.target_text + i} style={{ background: row.error ? 'var(--color-red-bg, #FFF5F5)' : 'inherit' }}>
                             <td>{row.source_text}</td>
                             <td>{row.target_text}</td>
@@ -207,14 +207,14 @@ export const CSVUploadModal = React.memo<CSVUploadModalProps>(({ opened, onClose
                   </div>
                 </>
               )}
-              {uploadResult && (
+              {formState.data.uploadResult && (
                 <div style={{ marginTop: 24 }}>
-                  {'error' in uploadResult ? (
-                    <div className={classes.errorText}>Upload failed: {uploadResult.error}</div>
+                  {'error' in formState.data.uploadResult ? (
+                    <div className={classes.errorText}>Upload failed: {formState.data.uploadResult.error}</div>
                   ) : (
                     <>
                       <div style={{ color: 'var(--color-green, #6CA489)', marginBottom: 8 }}>
-                        {uploadResult.added} of {uploadResult.total} translations added successfully.
+                        {formState.data.uploadResult.added} of {formState.data.uploadResult.total} translations added successfully.
                       </div>
                       <div className={classes.resultTableWrapper}>
                         <table className={classes.resultTable}>
@@ -228,7 +228,7 @@ export const CSVUploadModal = React.memo<CSVUploadModalProps>(({ opened, onClose
                             </tr>
                           </thead>
                           <tbody>
-                            {uploadResult.results.map((result, i) => (
+                            {formState.data.uploadResult.results.map((result, i) => (
                               <tr key={i} style={{ background: result.error ? 'var(--color-red-bg, #FFF5F5)' : 'inherit' }}>
                                 <td>{result.row}</td>
                                 <td>{result.source_text}</td>

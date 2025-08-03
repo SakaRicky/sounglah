@@ -1,0 +1,97 @@
+.centerContainer {
+  padding: 0 1rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  
+  // Add mobile responsiveness classes from the original TranslationManagement
+  &.translation-management-center-mobile {
+    @media (max-width: 600px) {
+      flex-direction: column;
+      width: 100vw;
+      padding: 0;
+      gap: 0.5rem;
+    }
+  }
+}
+
+.filtersAndActionsRow {
+  margin: 1rem 0;
+}
+
+.filtersRow {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.toolRow {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.tableContainer {
+  margin-top: 1rem;
+  // Remove custom styling to let SounglahTable handle its own styling
+  // The SounglahTable component has its own brown theme
+  
+  // Add mobile responsiveness classes from the original TranslationManagement
+  &.translation-management-table-mobile {
+    @media (max-width: 600px) {
+      min-width: 600px;
+      width: 100vw;
+      overflow-x: auto !important;
+      border-radius: 0;
+      box-shadow: none;
+      padding: 0;
+    }
+  }
+  
+  // Make table headers sticky on mobile
+  &.translation-management-table-mobile th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+}
+
+.table {
+  width: 100%;
+  // Let SounglahTable handle its own styling
+}
+
+.scrollCue {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+  z-index: 1;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+@media (max-width: 768px) {
+  .centerContainer {
+    padding: 0 0.5rem;
+  }
+  
+  .filtersRow {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .toolRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+} 

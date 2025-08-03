@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -13,6 +13,7 @@ import { AxiosError } from 'axios';
 import classes from './CreateTranslationModal.module.scss';
 import { theme } from '@/theme';
 import { useNotification } from '@/contexts/NotificationContext';
+import { useFormState } from '@/hooks/useFormState';
 import { AnimatePresence, motion } from 'framer-motion';
 
 interface CreateTranslationModalProps {
@@ -32,73 +33,70 @@ export const CreateTranslationModal = React.memo<CreateTranslationModalProps>(({
   translation = null, 
   mode = 'add' 
 }) => {
-  const [form, setForm] = useState({
+  // Standardized form state management
+  const [formState, formHandlers] = useFormState({
     source_lang_id: translation ? String(translation.source_language.id) : '',
     target_lang_id: translation ? String(translation.target_language.id) : '',
     source_text: translation ? translation.source_text : '',
     target_text: translation ? translation.target_text : '',
   });
-  const [formLoading, setFormLoading] = useState(false);
-  const [formError, setFormError] = useState('');
-  const [fieldErrors, setFieldErrors] = useState({
-    source_lang_id: false,
-    target_lang_id: false,
-    source_text: false,
-    target_text: false,
-  });
-  const [hasSubmitted, setHasSubmitted] = useState(false);
+  
   const notify = useNotification();
 
   useEffect(() => {
     if (translation && mode === 'edit') {
-      setForm({
+      formHandlers.reset({
         source_lang_id: String(translation.source_language.id),
         target_lang_id: String(translation.target_language.id),
         source_text: translation.source_text,
         target_text: translation.target_text,
       });
     } else if (mode === 'add') {
-      setForm({ source_lang_id: '', target_lang_id: '', source_text: '', target_text: '' });
+      formHandlers.reset({
+        source_lang_id: '',
+        target_lang_id: '',
+        source_text: '',
+        target_text: '',
+      });
     }
   }, [translation, mode, opened]);
 
   const handleFormChange = useCallback((field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  }, []);
+    formHandlers.setField(field as keyof typeof formState.data, value);
+  }, [formState]);
 
   const handleClose = useCallback(() => {
-    setForm({ source_lang_id: '', target_lang_id: '', source_text: '', target_text: '' });
-    setFormError('');
-    setFormLoading(false);
-    setFieldErrors({ source_lang_id: false, target_lang_id: false, source_text: false, target_text: false });
-    setHasSubmitted(false);
+    formHandlers.reset();
+    formHandlers.clearAllErrors();
+    formHandlers.setLoading(false);
+    formHandlers.setSubmitted(false);
     onClose();
   }, [onClose]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    setHasSubmitted(true);
-    setFormError('');
+    formHandlers.setSubmitted(true);
+    
     // Custom validation for required fields
-    const newFieldErrors = {
-      source_lang_id: !form.source_lang_id,
-      target_lang_id: !form.target_lang_id,
-      source_text: !form.source_text.trim(),
-      target_text: !form.target_text.trim(),
-    };
-    setFieldErrors(newFieldErrors);
-    if (Object.values(newFieldErrors).some(Boolean)) {
-      setFormError('Please fill in all required fields before submitting.');
+    const validator = (data: typeof formState.data) => ({
+      source_lang_id: !data.source_lang_id ? 'Source language is required' : '',
+      target_lang_id: !data.target_lang_id ? 'Target language is required' : '',
+      source_text: !data.source_text.trim() ? 'Source text is required' : '',
+      target_text: !data.target_text.trim() ? 'Target text is required' : '',
+    });
+    
+    if (!formHandlers.validate(validator)) {
       return;
     }
-    setFormLoading(true);
+    
+    formHandlers.setLoading(true);
     try {
       if (mode === 'edit' && translation) {
         const updated = await updateTranslation(translation.id, {
-          source_text: form.source_text,
-          target_text: form.target_text,
-          source_lang_id: Number(form.source_lang_id),
-          target_lang_id: Number(form.target_lang_id),
+          source_text: formState.data.source_text,
+          target_text: formState.data.target_text,
+          source_lang_id: Number(formState.data.source_lang_id),
+          target_lang_id: Number(formState.data.target_lang_id),
         });
         handleClose();
         notify.notify({
@@ -109,10 +107,10 @@ export const CreateTranslationModal = React.memo<CreateTranslationModalProps>(({
         onSuccess(updated);
       } else {
         await createTranslation({
-          source_text: form.source_text,
-          target_text: form.target_text,
-          source_lang_id: Number(form.source_lang_id),
-          target_lang_id: Number(form.target_lang_id),
+          source_text: formState.data.source_text,
+          target_text: formState.data.target_text,
+          source_lang_id: Number(formState.data.source_lang_id),
+          target_lang_id: Number(formState.data.target_lang_id),
         });
         handleClose();
         notify.notify({
@@ -124,14 +122,15 @@ export const CreateTranslationModal = React.memo<CreateTranslationModalProps>(({
       }
     } catch (err: unknown) {
       if (err instanceof AxiosError) {
-        setFormError(err.response?.data?.error || 'Failed to save translation.');
+        const errorMessage = err.response?.data?.error || 'Failed to save translation.';
+        formHandlers.setFieldError('source_text', errorMessage);
         notify.notify({
           type: 'error',
           title: mode === 'edit' ? 'Failed to Update Translation' : 'Failed to Add Translation',
-          detail: err.response?.data?.error || 'An error occurred while saving the translation.'
+          detail: errorMessage
         });
       } else {
-        setFormError('Failed to save translation.');
+        formHandlers.setFieldError('source_text', 'Failed to save translation.');
         notify.notify({
           type: 'error',
           title: mode === 'edit' ? 'Failed to Update Translation' : 'Failed to Add Translation',
@@ -139,9 +138,9 @@ export const CreateTranslationModal = React.memo<CreateTranslationModalProps>(({
         });
       }
     } finally {
-      setFormLoading(false);
+      formHandlers.setLoading(false);
     }
-  }, [form, mode, translation, handleClose, notify, onSuccess]);
+  }, [formState, mode, translation, handleClose, notify, onSuccess]);
 
   // Memoize language options to prevent unnecessary re-renders
   const languageOptions = useMemo(() => 
@@ -151,11 +150,11 @@ export const CreateTranslationModal = React.memo<CreateTranslationModalProps>(({
 
   // Memoize form validation
   const isFormValid = useMemo(() => {
-    return form.source_lang_id && 
-           form.target_lang_id && 
-           form.source_text.trim() && 
-           form.target_text.trim();
-  }, [form]);
+    return formState.data.source_lang_id && 
+           formState.data.target_lang_id && 
+           formState.data.source_text.trim() && 
+           formState.data.target_text.trim();
+  }, [formState.data]);
 
   return (
     <Dialog
@@ -193,9 +192,9 @@ export const CreateTranslationModal = React.memo<CreateTranslationModalProps>(({
                         id="source-lang"
                         placeholder="Select source language"
                         data={languageOptions}
-                        value={form.source_lang_id}
+                        value={formState.data.source_lang_id}
                         onChange={val => handleFormChange('source_lang_id', val || '')}
-                        error={hasSubmitted && fieldErrors.source_lang_id}
+                        error={formState.hasSubmitted && !!formState.errors.source_lang_id}
                         backgroundColor={theme.colors?.beige?.[3] || '#FFF2DF'}
                       />
                     </div>
@@ -207,9 +206,9 @@ export const CreateTranslationModal = React.memo<CreateTranslationModalProps>(({
                         id="target-lang"
                         placeholder="Select target language"
                         data={languageOptions}
-                        value={form.target_lang_id}
+                        value={formState.data.target_lang_id}
                         onChange={val => handleFormChange('target_lang_id', val || '')}
-                        error={hasSubmitted && fieldErrors.target_lang_id}
+                        error={formState.hasSubmitted && !!formState.errors.target_lang_id}
                         backgroundColor={theme.colors?.beige?.[3] || '#FFF2DF'}
                       />
                     </div>
@@ -219,9 +218,9 @@ export const CreateTranslationModal = React.memo<CreateTranslationModalProps>(({
                     placeholder="Enter source text"
                     minRows={2}
                     multiline
-                    value={form.source_text}
+                    value={formState.data.source_text}
                     onChange={e => handleFormChange('source_text', e.target.value)}
-                    error={hasSubmitted && fieldErrors.source_text}
+                    error={formState.hasSubmitted && !!formState.errors.source_text}
                     variant="outlined"
                     className={classes.textField}
                   />
@@ -230,14 +229,14 @@ export const CreateTranslationModal = React.memo<CreateTranslationModalProps>(({
                     placeholder="Enter translated text"
                     minRows={2}
                     multiline
-                    value={form.target_text}
+                    value={formState.data.target_text}
                     onChange={e => handleFormChange('target_text', e.target.value)}
-                    error={hasSubmitted && fieldErrors.target_text}
+                    error={formState.hasSubmitted && !!formState.errors.target_text}
                     variant="outlined"
                     className={classes.textField}
                   />
-                  {formError && (
-                    <div className={classes.errorText}>{formError}</div>
+                  {formState.errors.source_text && (
+                    <div className={classes.errorText}>{formState.errors.source_text}</div>
                   )}
                 </div>
               </DialogContent>
@@ -245,7 +244,7 @@ export const CreateTranslationModal = React.memo<CreateTranslationModalProps>(({
                 <SounglahButton
                   variant="secondary"
                   onClick={handleClose}
-                  disabled={formLoading}
+                  disabled={formState.isLoading}
                   type="button"
                 >
                   Cancel
@@ -253,9 +252,9 @@ export const CreateTranslationModal = React.memo<CreateTranslationModalProps>(({
                 <SounglahButton
                   variant="primary"
                   type="submit"
-                  disabled={formLoading || !isFormValid}
+                  disabled={formState.isLoading || !isFormValid}
                 >
-                  {formLoading ? (
+                  {formState.isLoading ? (
                     <>
                       <CircularProgress size={16} style={{ marginRight: 8 }} />
                       {mode === 'edit' ? 'Updating...' : 'Creating...'}

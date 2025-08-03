@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -10,6 +10,7 @@ import type { CreateLanguageRequest } from '../../api/languages';
 import { theme } from '@/theme';
 import { motion } from 'framer-motion';
 import { useCreateLanguage } from '../../hooks/useLanguages';
+import { useFormState } from '@/hooks/useFormState';
 
 interface CreateLanguageModalProps {
   opened: boolean;
@@ -22,61 +23,58 @@ export const CreateLanguageModal: React.FC<CreateLanguageModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const [formData, setFormData] = useState<CreateLanguageRequest>({
+  // Standardized form state management
+  const [formState, formHandlers] = useFormState<CreateLanguageRequest & Record<string, unknown>>({
     name: '',
     iso_code: '',
     region: '',
     description: '',
-  });
-  const [fieldErrors, setFieldErrors] = useState({
-    name: false,
-    iso_code: false,
-  });
-  const [hasSubmitted, setHasSubmitted] = useState(false);
+  } as CreateLanguageRequest & Record<string, unknown>);
 
   // React Query hook
   const createLanguageMutation = useCreateLanguage();
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    setHasSubmitted(true);
+    formHandlers.setSubmitted(true);
     
     // Custom validation for required fields
-    const newFieldErrors = {
-      name: !formData.name.trim(),
-      iso_code: !formData.iso_code.trim(),
-    };
-    setFieldErrors(newFieldErrors);
+    const validator = (data: typeof formState.data) => ({
+      name: !data.name.trim() ? 'Language name is required' : '',
+      iso_code: !data.iso_code?.trim() ? 'ISO code is required' : '',
+      region: '', // Optional field
+      description: '', // Optional field
+    });
     
-    if (Object.values(newFieldErrors).some(Boolean)) {
-      return; // Don't submit if there are validation errors
+    if (!formHandlers.validate(validator)) {
+      return;
     }
 
     try {
-      await createLanguageMutation.mutateAsync(formData);
+      await createLanguageMutation.mutateAsync(formState.data);
       handleClose();
       onSuccess();
     } catch (err) {
       // Error handling is done in the mutation hook
       console.error('Failed to create language:', err);
     }
-  }, [formData, createLanguageMutation, onSuccess]);
+  }, [formState.data, createLanguageMutation, onSuccess]);
 
   const handleClose = useCallback(() => {
-    setFormData({ name: '', iso_code: '', region: '', description: '' });
-    setFieldErrors({ name: false, iso_code: false });
-    setHasSubmitted(false);
+    formHandlers.reset();
+    formHandlers.clearAllErrors();
+    formHandlers.setSubmitted(false);
     onClose();
   }, [onClose]);
 
   const handleFormChange = useCallback((field: keyof CreateLanguageRequest, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    formHandlers.setField(field, value);
   }, []);
 
   // Memoize form validation
   const isFormValid = useMemo(() => {
-    return formData.name.trim() && formData.iso_code.trim();
-  }, [formData]);
+    return formState.data.name.trim() && formState.data.iso_code?.trim();
+  }, [formState.data]);
 
   return (
     <Dialog
@@ -124,13 +122,13 @@ export const CreateLanguageModal: React.FC<CreateLanguageModalProps> = ({
             <TextField
               label="Language Name *"
               placeholder="e.g., English, French, Spanish"
-              value={formData.name}
+              value={formState.data.name}
               onChange={(e) => handleFormChange('name', e.target.value)}
-              error={hasSubmitted && fieldErrors.name}
-              helperText={hasSubmitted && fieldErrors.name ? 'Language name is required' : ''}
+              error={formState.hasSubmitted && !!formState.errors.name}
+              helperText={formState.errors.name || ''}
               variant="outlined"
               fullWidth
-              style={{
+              sx={{
                 '& .MuiOutlinedInput-root': {
                   backgroundColor: theme.colors?.beige?.[1] || '#FFF8F0',
                   borderRadius: 8,
@@ -141,13 +139,13 @@ export const CreateLanguageModal: React.FC<CreateLanguageModalProps> = ({
             <TextField
               label="ISO Code *"
               placeholder="e.g., en, fr, es"
-              value={formData.iso_code}
+              value={formState.data.iso_code}
               onChange={(e) => handleFormChange('iso_code', e.target.value)}
-              error={hasSubmitted && fieldErrors.iso_code}
-              helperText={hasSubmitted && fieldErrors.iso_code ? 'ISO code is required' : ''}
+              error={formState.hasSubmitted && !!formState.errors.iso_code}
+              helperText={formState.errors.iso_code || ''}
               variant="outlined"
               fullWidth
-              style={{
+              sx={{
                 '& .MuiOutlinedInput-root': {
                   backgroundColor: theme.colors?.beige?.[1] || '#FFF8F0',
                   borderRadius: 8,
@@ -158,11 +156,11 @@ export const CreateLanguageModal: React.FC<CreateLanguageModalProps> = ({
             <TextField
               label="Region (Optional)"
               placeholder="e.g., US, CA, GB"
-              value={formData.region}
+              value={formState.data.region}
               onChange={(e) => handleFormChange('region', e.target.value)}
               variant="outlined"
               fullWidth
-              style={{
+              sx={{
                 '& .MuiOutlinedInput-root': {
                   backgroundColor: theme.colors?.beige?.[1] || '#FFF8F0',
                   borderRadius: 8,
@@ -173,13 +171,13 @@ export const CreateLanguageModal: React.FC<CreateLanguageModalProps> = ({
             <TextField
               label="Description (Optional)"
               placeholder="Brief description of the language"
-              value={formData.description}
+              value={formState.data.description}
               onChange={(e) => handleFormChange('description', e.target.value)}
               variant="outlined"
               multiline
               rows={3}
               fullWidth
-              style={{
+              sx={{
                 '& .MuiOutlinedInput-root': {
                   backgroundColor: theme.colors?.beige?.[1] || '#FFF8F0',
                   borderRadius: 8,

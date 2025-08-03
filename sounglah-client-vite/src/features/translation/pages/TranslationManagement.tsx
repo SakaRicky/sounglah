@@ -1,109 +1,52 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import classes from './TranslationManagement.module.scss';
-import { SounglahTable } from '@/components/atoms/Table';
-import { TranslationStats } from '../components/TranslationManagement/TranslationStats';
-import type { Language, Translation } from '../api/types';
-import type { User } from '@/types';
-import { Badge } from '@mantine/core';
+import type { Translation } from '../api/types';
 import { CreateTranslationModal } from '../components/TranslationManagement/CreateTranslationModal';
-import { TranslationFilters } from '../components/TranslationManagement/TranslationFilters';
 import { CSVUploadModal } from '../components/TranslationManagement/CSVUploadModal';
 import { UsersManagement } from '../../users/pages/UsersManagement';
 import { LanguageManagement } from './LanguageManagement';
-import CircularProgress from '@mui/material/CircularProgress';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { useNotification } from '@/contexts/NotificationContext';
-import { SounglahButton } from '@/components/atoms/SounglahButton/SounglahButton';
 import { useUndoHistory } from '../hooks/useUndoHistory';
-import { useBulkSelection } from '../hooks/useBulkSelection';
-import { BulkConfirmDialog } from '../components/TranslationManagement/BulkConfirmDialog';
-import { getTranslationTableColumns } from '../components/TranslationManagement/translationTableColumns';
-import { Tooltip } from '@mui/material';
-import ThumbUpAltIcon from '@mui/icons-material/ThumbUpAlt';
-import ThumbDownAltIcon from '@mui/icons-material/ThumbDownAlt';
-import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
-import { FilterChips } from '../components/FilterChips';
-import { AnimatePresence, motion } from 'framer-motion';
-import IconButton from '@mui/material/IconButton';
-import useMediaQuery from '@mui/material/useMediaQuery';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import { PiUserSoundDuotone } from 'react-icons/pi';
-import { TbLanguageKatakana } from "react-icons/tb";
-import { FaLanguage } from "react-icons/fa";
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
-import CancelIcon from '@mui/icons-material/Cancel';
-import { AdminPageSkeleton } from '@/components/atoms/AdminPageSkeleton';
-import { 
-  useTranslations, 
-  useLanguages, 
-  useUsers, 
-  useBulkUpdateTranslations,
-  type TranslationQueryParams 
-} from '../hooks/useTranslations';
+import { AdminPageSkeleton, ErrorDisplay } from '@/components/atoms';
+import { useTranslations, useBulkUpdateTranslations } from '../hooks/useTranslations';
+import { useCommonLanguages, useCommonReviewers } from '@/hooks/useCommonData';
+import { useModalState, useErrorHandler } from '@/hooks';
+import { useTranslationFilters } from '../hooks/useTranslationFilters';
+import { useExport } from '../hooks/useExport';
+import { TableNavigation } from '../components/TranslationManagement/TableNavigation';
+import { TranslationContent } from '../components/TranslationManagement/TranslationContent';
+import type { Language } from '../api/types';
 
-const STATUS_OPTIONS = [
-  { value: '', label: 'Status' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'approved', label: 'Approved' },
-  { value: 'rejected', label: 'Rejected' },
-];
+
 
 export default function TranslationManagement() {
-  // Filter states
-  const [languageFilter, setLanguageFilter] = useState('');
-  const [targetLanguageFilter, setTargetLanguageFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  // Custom hooks for state management
+  const {
+    filters,
+    handlers: filterHandlers,
+    buildQueryParams,
+  } = useTranslationFilters();
+
+  const [selectedTable, setSelectedTable] = useState<'translations' | 'users' | 'languages'>('translations');
   
-  // Debounced filters for API calls
-  const [debouncedLanguageFilter, setDebouncedLanguageFilter] = useState('');
-  const [debouncedTargetLanguageFilter, setDebouncedTargetLanguageFilter] = useState('');
-  const [debouncedStatusFilter, setDebouncedStatusFilter] = useState('');
-  const [debouncedStartDate, setDebouncedStartDate] = useState('');
-  const [debouncedEndDate, setDebouncedEndDate] = useState('');
+  // Standardized modal state management
+  const [translationModalState, translationModalHandlers] = useModalState<Translation>();
+  const [csvModalState, csvModalHandlers] = useModalState();
   
-  // Timeout refs for debouncing
-  const languageFilterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const targetLanguageFilterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const statusFilterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const startDateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const endDateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // Modal states
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
-  const [editingTranslation, setEditingTranslation] = useState<Translation | null>(null);
-  const [csvModalOpen, setCsvModalOpen] = useState(false);
-  
-  // Pagination states
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  
-  // Other states
   const notify = useNotification();
   const { addAction, popActionById } = useUndoHistory(10);
-  const [bulkAction, setBulkAction] = useState<'approve' | 'reject' | null>(null);
-  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [selectedTable, setSelectedTable] = useState<'translations' | 'users' | 'languages'>('translations');
+  const bulkUpdateMutation = useBulkUpdateTranslations();
 
-  // React Query hooks
-  const queryParams: TranslationQueryParams & { page?: number; limit?: number } = useMemo(() => {
-    const params: TranslationQueryParams & { page?: number; limit?: number } = {};
-    if (debouncedLanguageFilter) params.source_lang = debouncedLanguageFilter;
-    if (debouncedTargetLanguageFilter) params.target_lang = debouncedTargetLanguageFilter;
-    if (debouncedStatusFilter) params.status = debouncedStatusFilter;
-    if (debouncedStartDate) params.created_at_start = debouncedStartDate;
-    if (debouncedEndDate) params.created_at_end = debouncedEndDate;
-    params.page = page + 1; // 1-based page for backend
-    params.limit = rowsPerPage;
-    return params;
-  }, [debouncedLanguageFilter, debouncedTargetLanguageFilter, debouncedStatusFilter, debouncedStartDate, debouncedEndDate, page, rowsPerPage]);
+  // Standardized error handling
+  const { handleAsyncError } = useErrorHandler();
+
+  // Pagination state management
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+
+  // React Query hooks with proper pagination
+  const queryParams = buildQueryParams(page, rowsPerPage);
 
   const { 
     data: translationsData, 
@@ -111,411 +54,132 @@ export default function TranslationManagement() {
     error: translationsError 
   } = useTranslations(queryParams);
   
-  const { data: languages = [], isLoading: languagesLoading, error: languagesError } = useLanguages();
-  const { data: reviewers = [] } = useUsers('reviewer');
-  const bulkUpdateMutation = useBulkUpdateTranslations();
+  const { data: languagesData = [], isLoading: languagesLoading, error: languagesError } = useCommonLanguages();
+  const languages = languagesData as Language[];
+  const { data: reviewers = [] } = useCommonReviewers();
 
   // Extract data from React Query
   const translations = useMemo(() => translationsData?.translations || [], [translationsData?.translations]);
   const totalCount = translationsData?.total || 0;
 
-  // Selection state management (replaced by hook)
+  // Handle pagination changes
+  const handlePageChange = useCallback((newPage: number) => {
+    setPage(newPage);
+  }, []);
+
+  const handleRowsPerPageChange = useCallback((newRowsPerPage: number) => {
+    setRowsPerPage(newRowsPerPage);
+    setPage(0); // Reset to first page when changing rows per page
+  }, []);
+
+
+
+
+
+  // Export hook
   const {
-    selectedIds,
-    setSelectedIds,
-    selectAllChecked,
-    selectAllIndeterminate,
-    handleSelectAll,
-    handleSelectRow,
-  } = useBulkSelection(
-    translations,
-    [languageFilter, statusFilter, startDate, endDate]
-  );
+    exportState,
+    exportHandlers,
+  } = useExport(translations);
 
-  // Clear selections when filters change
-  useEffect(() => {
-    setSelectedIds(new Set());
-    handleSelectAll(false);
-  }, [languageFilter, statusFilter, startDate, endDate, setSelectedIds, handleSelectAll]);
-
-  // Keyboard shortcuts for selection
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Ctrl+A to select all on current page
-      if (event.ctrlKey && event.key === 'a') {
-        event.preventDefault();
-        handleSelectAll(true);
-      }
-      // Escape to clear selection
-      if (event.key === 'Escape') {
-        setSelectedIds(new Set());
-        handleSelectAll(false);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [handleSelectAll, setSelectedIds]);
-
-  // Debounced filter setters for performance optimization
-  const setLanguageFilterWithLog = useCallback((val: string) => {
-    setLanguageFilter(val);
-    setDebouncedLanguageFilter(val);
-  }, []);
-
-  const setTargetLanguageFilterWithLog = useCallback((val: string) => {
-    setTargetLanguageFilter(val);
-    setDebouncedTargetLanguageFilter(val);
-  }, []);
-
-  const setStatusFilterWithLog = useCallback((val: string) => {
-    setStatusFilter(val);
-    setDebouncedStatusFilter(val);
-  }, []);
-
-  const setStartDateWithLog = useCallback((val: string) => {
-    setStartDate(val);
-    setDebouncedStartDate(val);
-  }, []);
-
-  const setEndDateWithLog = useCallback((val: string) => {
-    setEndDate(val);
-    setDebouncedEndDate(val);
-  }, []);
-
-  const getStatusBadge = useCallback((status: string, isMobile?: boolean) => {
-    if (isMobile) {
-      if (status === 'approved') return <CheckCircleIcon style={{ color: '#388e3c', fontSize: 22 }} titleAccess="Approved" />;
-      if (status === 'pending') return <HourglassEmptyIcon style={{ color: '#fbc02d', fontSize: 22 }} titleAccess="Pending" />;
-      if (status === 'rejected') return <CancelIcon style={{ color: '#d32f2f', fontSize: 22 }} titleAccess="Rejected" />;
-      return <HourglassEmptyIcon style={{ color: '#bdbdbd', fontSize: 22 }} titleAccess={status} />;
-    }
-    if (status === 'approved') return (
-      <Badge style={{ background: '#388e3c', color: '#fff', fontWeight: 600, letterSpacing: 0.5, borderRadius: 8, padding: '0.3em 1.1em' }}>Approved</Badge>
-    );
-    if (status === 'pending') return <Badge color="yellow">Pending</Badge>;
-    if (status === 'rejected') return <Badge color="red">Rejected</Badge>;
-    return <Badge color="gray" variant="light">{status}</Badge>;
-  }, []);
+  // Keyboard shortcuts for selection - moved to TranslationContent hook
 
   const handleAddClick = useCallback(() => {
-    setEditingTranslation(null);
-    setModalMode('add');
-    setModalOpen(true);
-  }, []);
+    translationModalHandlers.openAdd();
+  }, [translationModalHandlers]);
 
   const handleEditClick = useCallback((translation: Translation) => {
-    setEditingTranslation(translation);
-    setModalMode('edit');
-    setModalOpen(true);
-  }, []);
+    translationModalHandlers.openEdit(translation);
+  }, [translationModalHandlers]);
 
   // Handle edit save
   const handleEditSave = useCallback(async (updatedTranslation?: Translation) => {
     if (!updatedTranslation) return;
     
-    try {
-      // This will be handled by the mutation in the modal
-      setModalOpen(false);
-      setEditingTranslation(null);
-      notify.notify({
-        type: 'success',
-        title: 'Translation Updated',
-        detail: 'Translation has been updated successfully.'
-      });
-    } catch (err) {
-      notify.notify({
-        type: 'error',
-        title: 'Failed to Update Translation',
-        detail: 'Failed to update translation.',
-      });
-    }
-  }, [notify]);
+    await handleAsyncError(
+      async () => {
+        // This will be handled by the mutation in the modal
+        translationModalHandlers.close();
+        notify.notify({
+          type: 'success',
+          title: 'Translation Updated',
+          detail: 'Translation has been updated successfully.'
+        });
+      },
+      {
+        errorTitle: 'Failed to Update Translation',
+        errorDetail: 'Unable to update the translation. Please try again.',
+        context: { translationId: updatedTranslation?.id, action: 'update_translation' },
+      }
+    );
+  }, [notify, translationModalHandlers, handleAsyncError]);
 
-  // Handle undo action
-  const handleUndoAction = useCallback(async (actionId: string | undefined) => {
-    if (!actionId) return;
-    
-    const lastAction = popActionById(actionId);
-    if (!lastAction) return;
 
-    try {
-      // This will be handled by the mutation
-      notify.notify({
-        type: 'success',
-        title: 'Action Undone',
-        detail: 'The previous action has been undone successfully.'
-      });
-    } catch (err) {
-      notify.notify({
-        type: 'error',
-        title: 'Failed to Undo Action',
-        detail: 'Failed to undo action.',
-      });
-    }
-  }, [popActionById, notify]);
 
   // Handle approve translation
   const handleApprove = useCallback(async (row: Translation) => {
     const previousState = { ...row };
-    try {
-      await bulkUpdateMutation.mutateAsync({
-        translation_ids: [row.id],
-        action: 'approve'
-      });
-      
-      const undoId = addAction({
-        type: 'approve',
-        translationId: row.id,
-        previousState,
-        description: `Approve translation #${row.id}`
-      });
-      
-      notify.notify({
-        type: 'success',
-        title: 'Translation Approved',
-        detail: `Translation #${row.id} has been approved successfully.`,
-        onUndo: () => handleUndoAction(undoId)
-      });
-    } catch (err) {
-      notify.notify({
-        type: 'error',
-        title: 'Failed to Approve Translation',
-        detail: 'Failed to approve translation.',
-      });
-    }
-  }, [bulkUpdateMutation, addAction, notify, handleUndoAction]);
+    
+    await handleAsyncError(
+      async () => {
+        // Use the bulk update mutation for single item approval
+        await bulkUpdateMutation.mutateAsync({
+          translation_ids: [row.id],
+          action: 'approve',
+        });
+        
+        addAction({
+          type: 'approve',
+          translationId: row.id,
+          previousState,
+          description: `Approve translation #${row.id}`
+        });
+        
+        // Note: Success notification is handled by the mutation's onSuccess callback
+        // We only need to handle the undo functionality
+      },
+      {
+        errorTitle: 'Failed to Approve Translation',
+        errorDetail: 'Unable to approve the translation. Please try again.',
+        context: { translationId: row.id, action: 'approve_translation' },
+      }
+    );
+  }, [bulkUpdateMutation, addAction, handleAsyncError]);
 
   // Handle reject translation
   const handleDeny = useCallback(async (row: Translation) => {
     const previousState = { ...row };
-    try {
-      await bulkUpdateMutation.mutateAsync({
-        translation_ids: [row.id],
-        action: 'reject'
-      });
-      
-      const undoId = addAction({
-        type: 'reject',
-        translationId: row.id,
-        previousState,
-        description: `Reject translation #${row.id}`
-      });
-      
-      notify.notify({
-        type: 'success',
-        title: 'Translation Rejected',
-        detail: `Translation #${row.id} has been rejected successfully.`,
-        onUndo: () => handleUndoAction(undoId)
-      });
-    } catch (err) {
-      notify.notify({
-        type: 'error',
-        title: 'Failed to Reject Translation',
-        detail: 'Failed to reject translation.',
-      });
-    }
-  }, [bulkUpdateMutation, addAction, notify, handleUndoAction]);
-
-  // Bulk action handlers
-  const handleBulkApprove = useCallback(() => {
-    setBulkAction('approve');
-    setBulkDialogOpen(true);
-  }, []);
-  const handleBulkReject = useCallback(() => {
-    setBulkAction('reject');
-    setBulkDialogOpen(true);
-  }, []);
-  const handleBulkDialogClose = useCallback(() => {
-    setBulkDialogOpen(false);
-    setBulkAction(null);
-  }, []);
-
-  // Handle bulk confirm
-  const handleBulkConfirm = useCallback(async () => {
-    if (!bulkAction || selectedIds.size === 0) return;
     
-    try {
-      const ids = Array.from(selectedIds);
-      await bulkUpdateMutation.mutateAsync({
-        translation_ids: ids,
-        action: bulkAction
-      });
-      
-      setSelectedIds(new Set());
-      notify.notify({
-        type: 'success',
-        title: 'Bulk Update Complete',
-        detail: `${ids.length} translations have been ${bulkAction === 'approve' ? 'approved' : 'rejected'} successfully.`
-      });
-    } catch (err) {
-      notify.notify({
-        type: 'error',
-        title: 'Failed to Update Translations',
-        detail: 'Failed to update translations.',
-      });
-    } finally {
-      setBulkDialogOpen(false);
-      setBulkAction(null);
-    }
-  }, [bulkAction, selectedIds, bulkUpdateMutation, setSelectedIds, notify]);
-
-  const handleExport = async () => {
-    setExporting(true);
-    try {
-      // Build query params for current filters
-      const params = new URLSearchParams();
-      if (languageFilter) params.append('source_lang', languageFilter);
-      if (targetLanguageFilter) params.append('target_lang', targetLanguageFilter);
-      if (statusFilter) params.append('status', statusFilter);
-      if (startDate) params.append('created_at_start', startDate);
-      if (endDate) params.append('created_at_end', endDate);
-      // Download CSV
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`/api/translations/export?${params.toString()}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (!response.ok) throw new Error('Failed to export translations');
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'translations_export.csv';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      const errorMsg = (err instanceof Error) ? err.message : 'Could not export translations.';
-      notify.notify({ type: 'error', title: 'Export Failed', detail: errorMsg });
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  // Reviewer filter state (add if not present)
-  const [reviewerFilter, setReviewerFilter] = useState('');
-
-  // Remove a filter chip
-  const handleRemoveFilter = (key: string) => {
-    if (key === 'status') {
-      setStatusFilter('');
-      setDebouncedStatusFilter('');
-    }
-    if (key === 'language') {
-      setLanguageFilter('');
-      setDebouncedLanguageFilter('');
-    }
-    if (key === 'targetLanguage') {
-      setTargetLanguageFilter('');
-      setDebouncedTargetLanguageFilter('');
-    }
-    if (key === 'reviewer') setReviewerFilter('');
-    if (key === 'dateRange') {
-      setStartDate('');
-      setEndDate('');
-      setDebouncedStartDate('');
-      setDebouncedEndDate('');
-    }
-  };
-  const handleClearAllFilters = () => {
-    setStatusFilter('');
-    setLanguageFilter('');
-    setTargetLanguageFilter('');
-    setStartDate('');
-    setEndDate('');
-    setDebouncedStatusFilter('');
-    setDebouncedLanguageFilter('');
-    setDebouncedTargetLanguageFilter('');
-    setDebouncedStartDate('');
-    setDebouncedEndDate('');
-    setReviewerFilter('');
-  };
-
-  // Table columns definition
-  const translationTableColumns = getTranslationTableColumns({
-    selectedIds,
-    handleSelectRow,
-    selectAllChecked,
-    selectAllIndeterminate,
-    handleSelectAll,
-    getStatusBadge,
-    reviewers,
-    handleEditClick,
-    handleApprove,
-    handleDeny,
-    actionsHeader: (
-      <div className={classes.tableHeaderActions}>
-        <Tooltip title="Add Translation">
-          <span>
-            <IconButton
-              onClick={handleAddClick}
-              size="large"
-              aria-label="Add Translation"
-              style={{
-                color: '#fff',
-                width: 44,
-                height: 44,
-                transition: 'color 0.18s, transform 0.18s',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'scale(1.18)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
-            >
-              <AddCircleOutlineIcon style={{ fontSize: 30 }} />
-            </IconButton>
-          </span>
-        </Tooltip>
-        <Tooltip title="Upload CSV">
-          <span>
-            <IconButton
-              onClick={() => setCsvModalOpen(true)}
-              size="large"
-              aria-label="Upload CSV"
-              style={{
-                color: '#fff',
-                width: 44,
-                height: 44,
-                transition: 'color 0.18s, transform 0.18s',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'scale(1.18)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
-            >
-              <CloudUploadIcon style={{ fontSize: 30 }} />
-            </IconButton>
-          </span>
-        </Tooltip>
-      </div>
-    ),
-  });
-
-  const isMobile = useMediaQuery('(max-width: 768px)');
-  const tableContainerRef = useRef<HTMLDivElement>(null);
-  const [showScrollCue, setShowScrollCue] = useState(false);
-
-  // Mobile scroll detection
-  useEffect(() => {
-    if (!isMobile) {
-      setShowScrollCue(false);
-      return;
-    }
-    const checkScroll = () => {
-      const el = tableContainerRef.current;
-      if (el) {
-        setShowScrollCue(el.scrollWidth > el.clientWidth + 8);
+    await handleAsyncError(
+      async () => {
+        // Use the bulk update mutation for single item rejection
+        await bulkUpdateMutation.mutateAsync({
+          translation_ids: [row.id],
+          action: 'reject',
+        });
+        
+        addAction({
+          type: 'reject',
+          translationId: row.id,
+          previousState,
+          description: `Reject translation #${row.id}`
+        });
+        
+        // Note: Success notification is handled by the mutation's onSuccess callback
+        // We only need to handle the undo functionality
+      },
+      {
+        errorTitle: 'Failed to Reject Translation',
+        errorDetail: 'Unable to reject the translation. Please try again.',
+        context: { translationId: row.id, action: 'reject_translation' },
       }
-    };
-    checkScroll();
-    window.addEventListener('resize', checkScroll);
-    return () => window.removeEventListener('resize', checkScroll);
-  }, [isMobile, translations]);
+    );
+  }, [bulkUpdateMutation, addAction, handleAsyncError]);
+
+
+
+
+
 
   // Loading state - show skeleton instead of full-screen loading
   if (translationsLoading) {
@@ -525,36 +189,20 @@ export default function TranslationManagement() {
   // Error state
   if (translationsError) {
     return (
-      <div className={classes.errorContainer}>
-        <p>Failed to load translations. Please try again.</p>
-      </div>
+      <ErrorDisplay
+        title="Failed to Load Translations"
+        message="Unable to load translation data. Please check your connection and try again."
+      />
     );
   }
 
   return (
     <div className={classes.pageBg + ' translation-management-mobile-wrap'}>
-      <div className={classes.segmentedControl}>
-        <ToggleButtonGroup
-          value={selectedTable}
-          exclusive
-          onChange={(_e, val) => val && setSelectedTable(val)}
-          aria-label="Table selector"
-          size="small"
-        >
-          <ToggleButton value="translations" aria-label="Translations" className={classes.segmentedButton}>
-            <TbLanguageKatakana style={{ marginRight: 8, fontSize: 20, verticalAlign: 'middle' }} />
-            Translations
-          </ToggleButton>
-          <ToggleButton value="users" aria-label="Users" className={classes.segmentedButton}>
-            <PiUserSoundDuotone style={{ marginRight: 8, fontSize: 20, verticalAlign: 'middle' }} />
-            Users
-          </ToggleButton>
-          <ToggleButton value="languages" aria-label="Languages" className={classes.segmentedButton}>
-            <FaLanguage style={{ marginRight: 8, fontSize: 20, verticalAlign: 'middle' }} />
-            Languages
-          </ToggleButton>
-        </ToggleButtonGroup>
-      </div>
+      <TableNavigation
+        selectedTable={selectedTable}
+        onTableChange={setSelectedTable}
+      />
+      
       {/* Only render the selected table */}
       {selectedTable === 'translations' && (
         <div className={classes.header}>
@@ -571,217 +219,43 @@ export default function TranslationManagement() {
           error={languagesError}
         />
       )}
+      
+      {/* Modals */}
       <CreateTranslationModal
-        opened={modalOpen}
-        onClose={() => setModalOpen(false)}
+        opened={translationModalState.isOpen}
+        onClose={translationModalHandlers.close}
         languages={languages}
         onSuccess={handleEditSave}
-        translation={editingTranslation}
-        mode={modalMode}
+        translation={translationModalState.data}
+        mode={translationModalState.mode === 'view' ? 'add' : translationModalState.mode}
       />
       <CSVUploadModal
-        opened={csvModalOpen}
-        onClose={() => setCsvModalOpen(false)}
+        opened={csvModalState.isOpen}
+        onClose={csvModalHandlers.close}
       />
+      
+      {/* Translation Content */}
       {selectedTable === 'translations' && (
-        <div className={classes.centerContainer + ' translation-management-center-mobile'}>
-          <div>
-            <TranslationStats translations={translations} />
-          </div>
-          <div className={classes.filtersAndActionsRow}>
-            <div className={classes.filtersRow}>
-              <div style={{ flex: 1 }}>
-                <div className={classes.toolRow}>
-                  <TranslationFilters
-                    languages={languages}
-                    languageFilter={languageFilter}
-                    targetLanguageFilter={targetLanguageFilter}
-                    statusFilter={statusFilter}
-                    startDate={startDate}
-                    endDate={endDate}
-                    onLanguageChange={setLanguageFilterWithLog}
-                    onTargetLanguageChange={setTargetLanguageFilterWithLog}
-                    onStatusChange={setStatusFilterWithLog}
-                    onStartDateChange={setStartDateWithLog}
-                    onEndDateChange={setEndDateWithLog}
-                    statusOptions={STATUS_OPTIONS}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-          <FilterChips
-              statusFilter={statusFilter}
-              languageFilter={languageFilter}
-              targetLanguageFilter={targetLanguageFilter}
-              reviewerFilter={reviewerFilter}
-              startDate={startDate}
-              endDate={endDate}
-              onRemove={handleRemoveFilter}
-              onClearAll={handleClearAllFilters}
-            />
-          <div className={classes.tableContainer + ' translation-management-table-mobile'} style={{ position: 'relative', overflowX: 'auto' }} ref={tableContainerRef}>
-            {showScrollCue && <div className={classes.scrollCue} />}
-            <SounglahTable
-              columns={translationTableColumns}
-              data={translations}
-              getRowKey={(row) => row.id}
-              tableClassName={classes.table}
-              containerClassName={classes.tableContainer}
-              pagination
-              rowsPerPageOptions={[5, 10, 25, 50, 100]}
-              defaultRowsPerPage={25}
-              dense={true}
-              page={page}
-              rowsPerPage={rowsPerPage}
-              totalCount={totalCount}
-              onPageChange={setPage}
-              onRowsPerPageChange={(n) => { setRowsPerPage(n); setPage(0); }}
-              ariaLabel="Translation management table"
-              emptyMessage="No translations found. Use the filters above to adjust your search or add new translations."
-              footerLeftContent={selectedIds.size > 0 ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0 0 0 8px' }}>
-                  <Tooltip title="Bulk Approve Selected">
-                    <span>
-                      <SounglahButton
-                        variant="primary"
-                        onClick={handleBulkApprove}
-                        style={{ minWidth: 0, padding: '2px 8px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}
-                        aria-label="Bulk approve selected translations"
-                      >
-                        <ThumbUpAltIcon style={{ fontSize: 18, marginRight: 4 }} /> Bulk Approve
-                      </SounglahButton>
-                    </span>
-                  </Tooltip>
-                  <Tooltip title="Bulk Reject Selected">
-                    <span>
-                      <SounglahButton
-                        variant="secondary"
-                        onClick={handleBulkReject}
-                        style={{ minWidth: 0, padding: '2px 8px', fontSize: 13, color: '#d32f2f', borderColor: '#d32f2f', display: 'flex', alignItems: 'center', gap: 4 }}
-                        aria-label="Bulk reject selected translations"
-                      >
-                        <ThumbDownAltIcon style={{ fontSize: 18, marginRight: 4 }} /> Bulk Reject
-                      </SounglahButton>
-                    </span>
-                  </Tooltip>
-                </div>
-              ) : (
-                <div style={{ padding: '10px 0 10px 12px', display: 'flex', alignItems: 'center' }}>
-                  <Tooltip title="Export translations as CSV">
-                    <span>
-                      <SounglahButton
-                        variant="primary"
-                        onClick={handleExport}
-                        style={{
-                          minWidth: 0,
-                          width: 48,
-                          height: 48,
-                          borderRadius: '50%',
-                          padding: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                        aria-label="Export translations as CSV"
-                        disabled={exporting}
-                      >
-                        <CloudDownloadIcon style={{ fontSize: 28, margin: 0 }} />
-                      </SounglahButton>
-                    </span>
-                  </Tooltip>
-                </div>
-              )}
-            />
-            {/* Floating Action Buttons - Mobile Only */}
-            <div className={classes.floatingActionButtons}>
-              <Tooltip title="Add Translation" placement="left">
-                <IconButton
-                  onClick={handleAddClick}
-                  size="large"
-                  aria-label="Add Translation"
-                  className={classes.fab}
-                  style={{
-                    backgroundColor: '#fb8c00',
-                    color: '#fff',
-                    width: 56,
-                    height: 56,
-                    boxShadow: '0 4px 12px rgba(251, 140, 0, 0.3)',
-                  }}
-                >
-                  <AddCircleOutlineIcon style={{ fontSize: 32 }} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Upload CSV" placement="left">
-                <IconButton
-                  onClick={() => setCsvModalOpen(true)}
-                  size="large"
-                  aria-label="Upload CSV"
-                  className={classes.fab}
-                  style={{
-                    backgroundColor: '#078930',
-                    color: '#fff',
-                    width: 56,
-                    height: 56,
-                    boxShadow: '0 4px 12px rgba(7, 137, 48, 0.3)',
-                  }}
-                >
-                  <CloudUploadIcon style={{ fontSize: 32 }} />
-                </IconButton>
-              </Tooltip>
-            </div>
-
-            <AnimatePresence>
-              {translationsLoading && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(255,255,255,0.7)', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <CircularProgress size={48} color="primary" />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-          {/* Bulk Action Confirmation Dialog (unchanged) */}
-          <BulkConfirmDialog
-            open={bulkDialogOpen}
-            actionType={bulkAction || 'approve'}
-            count={selectedIds.size}
-            onCancel={handleBulkDialogClose}
-            onConfirm={handleBulkConfirm}
-                         processing={bulkUpdateMutation.isPending} // Use mutation loading state
-          />
-          {/* Hidden descriptions for screen readers */}
-          <div id="add-translation-description" className="sr-only">
-            Opens a modal to manually add a new translation pair.
-          </div>
-          <div id="upload-csv-description" className="sr-only">
-            Opens a modal to upload a CSV file containing multiple translation pairs.
-          </div>
-          {/* Error announcement for screen readers */}
-          {translationsError && (
-            <div
-              aria-live="assertive"
-              aria-atomic="true"
-              className="sr-only"
-            >
-                             Error: Failed to load translations
-            </div>
-          )}
-
-          {/* Selection announcement for screen readers */}
-          {selectedIds.size > 0 && (
-            <div
-              aria-live="polite"
-              aria-atomic="true"
-              className="sr-only"
-            >
-              {selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''} selected
-            </div>
-          )}
-        </div>
+        <TranslationContent
+          translations={translations}
+          languages={languages}
+          reviewers={reviewers}
+          filters={filters}
+          filterHandlers={filterHandlers}
+          exportState={exportState}
+          exportHandlers={exportHandlers}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          totalCount={totalCount}
+          onPageChange={handlePageChange}
+          onRowsPerPageChange={handleRowsPerPageChange}
+          onAddClick={handleAddClick}
+          onUploadClick={() => csvModalHandlers.openAdd()}
+          handleEditClick={handleEditClick}
+          handleApprove={handleApprove}
+          handleDeny={handleDeny}
+          isLoading={translationsLoading}
+        />
       )}
     </div>
   );

@@ -213,10 +213,14 @@ export const useBulkUpdateTranslations = () => {
       queryClient.invalidateQueries({ queryKey: translationKeys.lists() });
 
       const actionText = variables.action === 'approve' ? 'approved' : 'rejected';
+      const isBulk = variables.translation_ids.length > 1;
+      
       notify.notify({
         type: 'success',
-        title: 'Bulk Update Complete',
-        detail: `${variables.translation_ids.length} translations have been ${actionText} successfully.`
+        title: isBulk ? 'Bulk Update Complete' : `Translation ${actionText.charAt(0).toUpperCase() + actionText.slice(1)}`,
+        detail: isBulk 
+          ? `${variables.translation_ids.length} translations have been ${actionText} successfully.`
+          : `Translation has been ${actionText} successfully.`
       });
     },
     onError: (error: unknown) => {

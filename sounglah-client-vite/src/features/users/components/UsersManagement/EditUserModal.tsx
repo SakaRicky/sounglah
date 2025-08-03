@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useCallback, useMemo, useEffect } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -12,6 +12,7 @@ import classes from './EditUserModal.module.scss';
 import { theme } from '@/theme';
 import { motion } from 'framer-motion';
 import { useUpdateUser, useRoles } from '../../hooks/useUsers';
+import { useFormState } from '@/hooks/useFormState';
 
 interface EditUserModalProps {
   opened: boolean;
@@ -26,16 +27,12 @@ export const EditUserModal = React.memo<EditUserModalProps>(({
   onSuccess,
   user
 }) => {
-  const [form, setForm] = useState({
+  // Standardized form state management
+  const [formState, formHandlers] = useFormState({
     username: '',
     email: '',
     password: '',
     role_id: 0,
-  });
-  const [formError, setFormError] = useState('');
-  const [fieldErrors, setFieldErrors] = useState({
-    username: false,
-    email: false,
   });
 
   // React Query hooks
@@ -44,14 +41,13 @@ export const EditUserModal = React.memo<EditUserModalProps>(({
 
   useEffect(() => {
     if (user && opened) {
-      setForm({
+      formHandlers.reset({
         username: user.username,
         email: user.email,
         password: '', // Password is optional for updates
         role_id: 0, // Will be set when roles are loaded
       });
-      setFormError('');
-      setFieldErrors({ username: false, email: false });
+      formHandlers.clearAllErrors();
     }
   }, [user, opened]);
 
@@ -59,60 +55,58 @@ export const EditUserModal = React.memo<EditUserModalProps>(({
   useEffect(() => {
     if (opened && user && roles.length > 0) {
       const currentRole = roles.find(role => role.name === user.role);
-      setForm(f => ({ ...f, role_id: currentRole?.id || roles[0]?.id || 0 }));
+      formHandlers.setField('role_id', currentRole?.id || roles[0]?.id || 0);
     }
   }, [opened, user, roles]);
 
   const handleFormChange = useCallback((field: string, value: string | number) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  }, []);
+    formHandlers.setField(field as keyof typeof formState.data, value);
+  }, [formState.data]);
 
   const handleClose = useCallback(() => {
-    setForm({ username: '', email: '', password: '', role_id: 0 });
-    setFormError('');
-    setFieldErrors({ username: false, email: false });
+    formHandlers.reset();
+    formHandlers.clearAllErrors();
     onClose();
   }, [onClose]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError('');
     
     // Custom validation for required fields
-    const newFieldErrors = {
-      username: !form.username.trim(),
-      email: !form.email.trim(),
-    };
-    setFieldErrors(newFieldErrors);
+    const validator = (data: typeof formState.data) => ({
+      username: !data.username.trim() ? 'Username is required' : '',
+      email: !data.email.trim() ? 'Email is required' : '',
+      password: '', // Password is optional for updates
+      role_id: '', // Role validation is handled separately
+    });
     
-    if (Object.values(newFieldErrors).some(Boolean)) {
-      setFormError('Please fill in all required fields before submitting.');
+    if (!formHandlers.validate(validator)) {
       return;
     }
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(form.email)) {
-      setFormError('Please enter a valid email address.');
+    if (!emailRegex.test(formState.data.email)) {
+      formHandlers.setFieldError('email', 'Please enter a valid email address');
       return;
     }
 
     if (!user) {
-      setFormError('No user selected for editing.');
+      formHandlers.setFieldError('username', 'No user selected for editing');
       return;
     }
 
     try {
       // Prepare update data (only include fields that have changed or password if provided)
       const updateData: UpdateUserRequest = {
-        username: form.username.trim(),
-        email: form.email.trim(),
-        role_id: form.role_id,
+        username: formState.data.username.trim(),
+        email: formState.data.email.trim(),
+        role_id: formState.data.role_id,
       };
 
       // Only include password if it's provided
-      if (form.password.trim()) {
-        updateData.password = form.password.trim();
+      if (formState.data.password.trim()) {
+        updateData.password = formState.data.password.trim();
       }
 
       await updateUserMutation.mutateAsync({ id: user.id, data: updateData });
@@ -123,7 +117,7 @@ export const EditUserModal = React.memo<EditUserModalProps>(({
       // Error handling is done in the mutation hook
       console.error('Failed to update user:', error);
     }
-  }, [form, user, updateUserMutation, handleClose, onSuccess]);
+  }, [formState.data, user, updateUserMutation, handleClose, onSuccess]);
 
   const roleOptions = useMemo(() => 
     roles.map(role => ({
@@ -163,39 +157,39 @@ export const EditUserModal = React.memo<EditUserModalProps>(({
         
         <form onSubmit={handleSubmit}>
           <DialogContent className={classes.dialogContent}>
-            {formError && (
+            {formState.errors.username && (
               <div className={classes.errorMessage}>
-                {formError}
+                {formState.errors.username}
               </div>
             )}
             
             <TextField
               label="Username"
-              value={form.username}
+              value={formState.data.username}
               onChange={(e) => handleFormChange('username', e.target.value)}
               fullWidth
               margin="normal"
-              error={fieldErrors.username}
-              helperText={fieldErrors.username ? 'Username is required' : ''}
+              error={!!formState.errors.username}
+              helperText={formState.errors.username || ''}
               className={classes.textField}
             />
             
             <TextField
               label="Email"
               type="email"
-              value={form.email}
+              value={formState.data.email}
               onChange={(e) => handleFormChange('email', e.target.value)}
               fullWidth
               margin="normal"
-              error={fieldErrors.email}
-              helperText={fieldErrors.email ? 'Valid email is required' : ''}
+              error={!!formState.errors.email}
+              helperText={formState.errors.email || ''}
               className={classes.textField}
             />
             
             <TextField
               label="Password (leave blank to keep current)"
               type="password"
-              value={form.password}
+              value={formState.data.password}
               onChange={(e) => handleFormChange('password', e.target.value)}
               fullWidth
               margin="normal"
@@ -207,7 +201,7 @@ export const EditUserModal = React.memo<EditUserModalProps>(({
               id="role"
               placeholder="Select role"
               data={roleOptions}
-              value={form.role_id ? form.role_id.toString() : ''}
+              value={formState.data.role_id ? formState.data.role_id.toString() : ''}
               onChange={(val) => handleFormChange('role_id', Number(val))}
               backgroundColor={theme?.colors?.beige?.[3] || '#FFF2DF'}
               className={classes.selectField}

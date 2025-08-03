@@ -162,8 +162,6 @@ export const ActionIcons = React.memo<ActionIconsProps>(({
             id="confirm-deny-title" 
             sx={{
               ...headerStyles,
-              // Remove 'position' from headerStyles if present, as MUI sx expects a specific type
-              position: undefined,
             }}
           >
             Confirm Rejection

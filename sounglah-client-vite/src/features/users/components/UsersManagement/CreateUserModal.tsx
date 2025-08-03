@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -11,6 +11,7 @@ import classes from './CreateUserModal.module.scss';
 import { theme } from '@/theme';
 import { motion } from 'framer-motion';
 import { useCreateUser, useRoles } from '../../hooks/useUsers';
+import { useFormState } from '@/hooks/useFormState';
 
 interface CreateUserModalProps {
   opened: boolean;
@@ -23,18 +24,13 @@ export const CreateUserModal = React.memo<CreateUserModalProps>(({
   onClose, 
   onSuccess
 }) => {
-  const [form, setForm] = useState({
+  // Standardized form state management
+  const [formState, formHandlers] = useFormState({
     username: '',
     email: '',
     password: '',
     role_id: 0,
   });
-  const [fieldErrors, setFieldErrors] = useState({
-    username: false,
-    email: false,
-    password: false,
-  });
-  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   // React Query hooks
   const createUserMutation = useCreateUser();
@@ -43,49 +39,49 @@ export const CreateUserModal = React.memo<CreateUserModalProps>(({
   React.useEffect(() => {
     if (opened && roles.length > 0) {
       // Set default role_id to first role if not set
-      setForm(f => ({ ...f, role_id: roles[0]?.id || 0 }));
+      formHandlers.setField('role_id', roles[0]?.id || 0);
     }
   }, [opened, roles]);
 
   const handleFormChange = useCallback((field: string, value: string | number) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  }, []);
+    formHandlers.setField(field as keyof typeof formState.data, value);
+  }, [formState.data]);
 
   const handleClose = useCallback(() => {
-    setForm({ username: '', email: '', password: '', role_id: 0 });
-    setFieldErrors({ username: false, email: false, password: false });
-    setHasSubmitted(false);
+    formHandlers.reset();
+    formHandlers.clearAllErrors();
+    formHandlers.setSubmitted(false);
     onClose();
   }, [onClose]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    setHasSubmitted(true);
+    formHandlers.setSubmitted(true);
     
     // Custom validation for required fields
-    const newFieldErrors = {
-      username: !form.username.trim(),
-      email: !form.email.trim(),
-      password: !form.password.trim(),
-    };
-    setFieldErrors(newFieldErrors);
+    const validator = (data: typeof formState.data) => ({
+      username: !data.username.trim() ? 'Username is required' : '',
+      email: !data.email.trim() ? 'Email is required' : '',
+      password: !data.password.trim() ? 'Password is required' : '',
+    });
     
-    if (Object.values(newFieldErrors).some(Boolean)) {
-      return; // Don't submit if there are validation errors
+    if (!formHandlers.validate(validator)) {
+      return;
     }
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(form.email)) {
-      return; // Don't submit if email is invalid
+    if (!emailRegex.test(formState.data.email)) {
+      formHandlers.setFieldError('email', 'Please enter a valid email address');
+      return;
     }
 
     try {
       await createUserMutation.mutateAsync({
-        username: form.username.trim(),
-        email: form.email.trim().toLowerCase(),
-        password: form.password,
-        role_id: form.role_id,
+        username: formState.data.username.trim(),
+        email: formState.data.email.trim().toLowerCase(),
+        password: formState.data.password,
+        role_id: formState.data.role_id,
       });
       
       handleClose();
@@ -94,7 +90,7 @@ export const CreateUserModal = React.memo<CreateUserModalProps>(({
       // Error handling is done in the mutation hook
       console.error('Failed to create user:', err);
     }
-  }, [form, createUserMutation, handleClose, onSuccess]);
+  }, [formState.data, createUserMutation, handleClose, onSuccess]);
 
   // Memoize role options from API
   const roleOptions = React.useMemo(() =>
@@ -104,11 +100,11 @@ export const CreateUserModal = React.memo<CreateUserModalProps>(({
 
   // Memoize form validation
   const isFormValid = useMemo(() => {
-    return form.username.trim() && 
-           form.email.trim() && 
-           form.password.trim() &&
-           !!form.role_id;
-  }, [form]);
+    return formState.data.username.trim() && 
+           formState.data.email.trim() && 
+           formState.data.password.trim() &&
+           !!formState.data.role_id;
+  }, [formState.data]);
 
   return (
     <Dialog 
@@ -140,9 +136,9 @@ export const CreateUserModal = React.memo<CreateUserModalProps>(({
             <TextField
               label="Username *"
               placeholder="Enter username"
-              value={form.username}
+              value={formState.data.username}
               onChange={e => handleFormChange('username', e.target.value)}
-              error={hasSubmitted && fieldErrors.username}
+              error={formState.hasSubmitted && !!formState.errors.username}
               variant="outlined"
               className={classes.textField}
             />
@@ -150,9 +146,9 @@ export const CreateUserModal = React.memo<CreateUserModalProps>(({
               label="Email *"
               placeholder="Enter email address"
               type="email"
-              value={form.email}
+              value={formState.data.email}
               onChange={e => handleFormChange('email', e.target.value)}
-              error={hasSubmitted && fieldErrors.email}
+              error={formState.hasSubmitted && !!formState.errors.email}
               variant="outlined"
               className={classes.textField}
             />
@@ -160,9 +156,9 @@ export const CreateUserModal = React.memo<CreateUserModalProps>(({
               label="Password *"
               placeholder="Enter password"
               type="password"
-              value={form.password}
+              value={formState.data.password}
               onChange={e => handleFormChange('password', e.target.value)}
-              error={hasSubmitted && fieldErrors.password}
+              error={formState.hasSubmitted && !!formState.errors.password}
               variant="outlined"
               className={classes.textField}
             />
@@ -170,7 +166,7 @@ export const CreateUserModal = React.memo<CreateUserModalProps>(({
               id="role"
               placeholder="Select role"
               data={roleOptions}
-              value={form.role_id ? form.role_id.toString() : ''}
+              value={formState.data.role_id ? formState.data.role_id.toString() : ''}
               onChange={(val) => handleFormChange('role_id', Number(val))}
               backgroundColor={theme?.colors?.beige?.[3] || '#FFF2DF'}
               className={classes.selectField}

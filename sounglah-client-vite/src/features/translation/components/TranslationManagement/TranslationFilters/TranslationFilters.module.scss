@@ -1,0 +1,26 @@
+@use "@/styles/colors" as *;
+@use "@/styles/breakpoints" as *;
+
+.filtersContainer {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.filtersRow {
+  margin-bottom: 1rem;
+}
+
+.toolRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin: 1rem 0;
+  align-items: center;
+
+  @media (max-width: $breakpoint-md) {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1.2rem;
+  }
+} 

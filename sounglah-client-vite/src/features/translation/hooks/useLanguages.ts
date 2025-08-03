@@ -53,14 +53,18 @@ export const useCreateLanguage = () => {
   return useMutation({
     mutationFn: createLanguage,
     onSuccess: (newLanguage) => {
-      // Update the languages list with the new language
-      queryClient.setQueryData(languageKeys.lists(), (oldData: LanguagesResponse | undefined) => {
+      // Update both query keys to ensure UI consistency
+      const updateCache = (oldData: LanguagesResponse | undefined) => {
         if (!oldData) return { languages: [newLanguage] };
         return {
           ...oldData,
           languages: [...oldData.languages, newLanguage],
         };
-      });
+      };
+
+      // Update the languages list with the new language for both query keys
+      queryClient.setQueryData(languageKeys.lists(), updateCache);
+      queryClient.setQueryData(['common', 'languages'], updateCache);
 
       notify.notify({
         type: 'success',
@@ -96,8 +100,8 @@ export const useUpdateLanguage = () => {
     mutationFn: ({ id, data }: UpdateLanguageVariables) => 
       updateLanguage(id, data),
     onSuccess: (updatedLanguage, variables) => {
-      // Update the languages list with the updated language
-      queryClient.setQueryData(languageKeys.lists(), (oldData: LanguagesResponse | undefined) => {
+      // Update both query keys to ensure UI consistency
+      const updateCache = (oldData: LanguagesResponse | undefined) => {
         if (!oldData) return { languages: [updatedLanguage] };
         return {
           ...oldData,
@@ -105,7 +109,11 @@ export const useUpdateLanguage = () => {
             language.id === variables.id ? updatedLanguage : language
           ),
         };
-      });
+      };
+
+      // Update the languages list with the updated language for both query keys
+      queryClient.setQueryData(languageKeys.lists(), updateCache);
+      queryClient.setQueryData(['common', 'languages'], updateCache);
 
       notify.notify({
         type: 'success',
@@ -145,14 +153,18 @@ export const useDeleteLanguage = () => {
   return useMutation({
     mutationFn: deleteLanguage,
     onSuccess: (_, languageId) => {
-      // Remove the language from the languages list
-      queryClient.setQueryData(languageKeys.lists(), (oldData: LanguagesResponse | undefined) => {
+      // Update both query keys to ensure UI consistency
+      const updateCache = (oldData: LanguagesResponse | undefined) => {
         if (!oldData) return { languages: [] };
         return {
           ...oldData,
           languages: oldData.languages.filter((language: Language) => language.id !== languageId),
         };
-      });
+      };
+
+      // Remove the language from the languages list for both query keys
+      queryClient.setQueryData(languageKeys.lists(), updateCache);
+      queryClient.setQueryData(['common', 'languages'], updateCache);
 
       notify.notify({
         type: 'success',

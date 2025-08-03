@@ -6,7 +6,7 @@ import { useCallback, useMemo, useRef } from 'react';
  * @param dependencies The dependencies array
  * @returns The memoized callback
  */
-export function useMemoizedCallback<T extends (...args: any[]) => any>(
+export function useMemoizedCallback<T extends (...args: unknown[]) => unknown>(
   callback: T,
   dependencies: React.DependencyList
 ): T {

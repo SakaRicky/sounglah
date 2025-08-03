@@ -40,8 +40,10 @@ export async function updateTranslation(id: number, payload: {
   return response.data;
 }
 
-export async function bulkUpdateTranslations(ids: number[], status: string) {
-  const response = await api.post('/translations/bulk_update', { ids, status });
+export async function bulkUpdateTranslations(payload: { translation_ids: number[]; action: 'approve' | 'reject' }) {
+  const { translation_ids, action } = payload;
+  const status = action === 'approve' ? 'approved' : 'rejected';
+  const response = await api.post('/translations/bulk_update', { ids: translation_ids, status });
   return response.data;
 }
 

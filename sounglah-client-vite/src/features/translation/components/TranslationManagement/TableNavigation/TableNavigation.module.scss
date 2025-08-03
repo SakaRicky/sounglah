@@ -1,0 +1,43 @@
+@use "@/styles/colors" as *;
+
+$color-yellow-warm: #fde642;
+
+.segmentedControl {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  background: #fff4e5;
+  border-radius: 999px;
+  box-shadow: 0 2px 12px rgba(251, 140, 0, 0.08);
+  border: 2px solid #4e3b2a;
+  padding: 4px 8px;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.segmentedButton {
+  font-family: 'Georgia', serif;
+  font-weight: 600;
+  font-size: 1.08rem;
+  color: #4e3b2a;
+  border-radius: 999px !important;
+  padding: 7px 22px;
+  border: none;
+  background: transparent;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+  box-shadow: none;
+  letter-spacing: 0.01em;
+  text-transform: none;
+
+  &.Mui-selected {
+    background: linear-gradient(90deg, $color-orange-4 60%, $color-yellow-warm 100%);
+    color: $color-brown-5 !important;
+    box-shadow: 0 2px 8px rgba(251, 140, 0, 0.13);
+  }
+  
+  &:hover {
+    background: $color-yellow-warm;
+    color: $color-orange-4;
+  }
+} 
