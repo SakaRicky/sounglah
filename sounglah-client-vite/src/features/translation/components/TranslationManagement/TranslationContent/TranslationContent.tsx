@@ -11,6 +11,7 @@ import { MobileActions } from '../MobileActions';
 import { BulkConfirmDialog } from '../BulkConfirmDialog';
 import { getTranslationTableColumns } from '../translationTableColumns';
 import { useTranslationContent } from '../../../hooks/useTranslationContent';
+import { StatsSkeleton, FiltersSkeleton, TableSkeleton } from '@/components/atoms/Skeleton';
 import type { Translation } from '../../../api/types';
 import type { Language } from '../../../api/types';
 import type { User } from '../../../../users/api/users';
@@ -103,68 +104,90 @@ export const TranslationContent: React.FC<TranslationContentProps> = (props) => 
 
   return (
     <div className={classes.centerContainer + ' translation-management-center-mobile'}>
+      {/* Stats Section */}
       <div>
-        <TranslationStats translations={state.translations} />
+        {state.isLoading ? (
+          <StatsSkeleton count={3} />
+        ) : (
+          <TranslationStats translations={state.translations} />
+        )}
       </div>
+
+      {/* Filters Section */}
       <div className={classes.filtersAndActionsRow}>
         <div className={classes.filtersRow}>
           <div style={{ flex: 1 }}>
             <div className={classes.toolRow}>
-              <TranslationFiltersComponent
-                languages={state.languages}
-                languageFilter={state.filters.languageFilter}
-                targetLanguageFilter={state.filters.targetLanguageFilter}
-                statusFilter={state.filters.statusFilter}
-                startDate={state.filters.startDate}
-                endDate={state.filters.endDate}
-                onLanguageChange={state.filterHandlers.setLanguageFilter}
-                onTargetLanguageChange={state.filterHandlers.setTargetLanguageFilter}
-                onStatusChange={state.filterHandlers.setStatusFilter}
-                onStartDateChange={state.filterHandlers.setStartDate}
-                onEndDateChange={state.filterHandlers.setEndDate}
-                statusOptions={STATUS_OPTIONS}
-              />
+              {state.isLoading ? (
+                <FiltersSkeleton filterCount={5} />
+              ) : (
+                <TranslationFiltersComponent
+                  languages={state.languages}
+                  languageFilter={state.filters.languageFilter}
+                  targetLanguageFilter={state.filters.targetLanguageFilter}
+                  statusFilter={state.filters.statusFilter}
+                  startDate={state.filters.startDate}
+                  endDate={state.filters.endDate}
+                  onLanguageChange={state.filterHandlers.setLanguageFilter}
+                  onTargetLanguageChange={state.filterHandlers.setTargetLanguageFilter}
+                  onStatusChange={state.filterHandlers.setStatusFilter}
+                  onStartDateChange={state.filterHandlers.setStartDate}
+                  onEndDateChange={state.filterHandlers.setEndDate}
+                  statusOptions={STATUS_OPTIONS}
+                />
+              )}
             </div>
           </div>
         </div>
       </div>
-      <FilterChips
-        statusFilter={state.filters.statusFilter}
-        languageFilter={state.filters.languageFilter}
-        targetLanguageFilter={state.filters.targetLanguageFilter}
-        reviewerFilter={state.filters.reviewerFilter}
-        startDate={state.filters.startDate}
-        endDate={state.filters.endDate}
-        onRemove={state.filterHandlers.removeFilter}
-        onClearAll={state.filterHandlers.clearAllFilters}
-      />
+
+      {/* Filter Chips */}
+      {!state.isLoading && (
+        <FilterChips
+          statusFilter={state.filters.statusFilter}
+          languageFilter={state.filters.languageFilter}
+          targetLanguageFilter={state.filters.targetLanguageFilter}
+          reviewerFilter={state.filters.reviewerFilter}
+          startDate={state.filters.startDate}
+          endDate={state.filters.endDate}
+          onRemove={state.filterHandlers.removeFilter}
+          onClearAll={state.filterHandlers.clearAllFilters}
+        />
+      )}
+
+      {/* Table Section */}
       <div className={classes.tableContainer + ' translation-management-table-mobile'} style={{ position: 'relative', overflowX: 'auto' }} ref={state.tableContainerRef}>
         {state.showScrollCue && <div className={classes.scrollCue} />}
-        <SounglahTable
-          columns={translationTableColumns}
-          data={state.translations}
-          getRowKey={(row) => row.id}
-          pagination
-          rowsPerPageOptions={[5, 10, 25, 50, 100]}
-          defaultRowsPerPage={25}
-          dense={true}
-          page={state.page}
-          rowsPerPage={state.rowsPerPage}
-          totalCount={state.totalCount}
-          onPageChange={handlers.onPageChange}
-          onRowsPerPageChange={handlers.onRowsPerPageChange}
-          ariaLabel="Translation management table"
-          emptyMessage="No translations found. Use the filters above to adjust your search or add new translations."
-          footerLeftContent={
-            <TableActions
-              selectedCount={state.tableState.selectedIds.size}
-              onBulkApprove={state.bulkActionHandlers.handleBulkApprove}
-              onBulkReject={state.bulkActionHandlers.handleBulkReject}
-              onExport={state.exportHandlers.handleExport}
-              isExporting={state.exportState.exporting}
-            />
-          }
-        />
+        
+        {state.isLoading ? (
+          <TableSkeleton rows={8} columns={7} showPagination={true} />
+        ) : (
+          <SounglahTable
+            columns={translationTableColumns}
+            data={state.translations}
+            getRowKey={(row) => row.id}
+            pagination
+            rowsPerPageOptions={[5, 10, 25, 50, 100]}
+            defaultRowsPerPage={25}
+            dense={true}
+            page={state.page}
+            rowsPerPage={state.rowsPerPage}
+            totalCount={state.totalCount}
+            onPageChange={handlers.onPageChange}
+            onRowsPerPageChange={handlers.onRowsPerPageChange}
+            ariaLabel="Translation management table"
+            emptyMessage="No translations found. Use the filters above to adjust your search or add new translations."
+            footerLeftContent={
+              <TableActions
+                selectedCount={state.tableState.selectedIds.size}
+                onBulkApprove={state.bulkActionHandlers.handleBulkApprove}
+                onBulkReject={state.bulkActionHandlers.handleBulkReject}
+                onExport={state.exportHandlers.handleExport}
+                isExporting={state.exportState.exporting}
+              />
+            }
+          />
+        )}
         
         {/* Mobile Actions */}
         {state.isMobile && (

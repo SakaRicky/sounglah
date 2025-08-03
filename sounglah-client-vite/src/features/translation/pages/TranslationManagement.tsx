@@ -181,10 +181,7 @@ export default function TranslationManagement() {
 
 
 
-  // Loading state - show skeleton instead of full-screen loading
-  if (translationsLoading) {
-    return <AdminPageSkeleton />;
-  }
+  // Loading state is now handled by individual components with granular skeletons
 
   // Error state
   if (translationsError) {
