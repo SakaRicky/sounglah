@@ -22,7 +22,7 @@ interface TranslationFiltersProps {
   statusOptions: { value: string; label: string }[];
 }
 
-export const TranslationFilters = React.memo<TranslationFiltersProps>(({ 
+export const TranslationFilters = React.memo<TranslationFiltersProps>(({
   languages,
   languageFilter,
   targetLanguageFilter,
@@ -37,7 +37,7 @@ export const TranslationFilters = React.memo<TranslationFiltersProps>(({
   statusOptions,
 }) => {
   return (
-    <div 
+    <div
       className={classes.filtersRow}
       role="group"
       aria-label="Translation filters"

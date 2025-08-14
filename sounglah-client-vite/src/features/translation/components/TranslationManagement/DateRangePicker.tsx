@@ -78,6 +78,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 error: !!startDateError,
                 helperText: startDateError,
                 size: 'small',
+                fullWidth: true,
                 sx: {
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: beige2,
@@ -123,6 +124,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 error: !!endDateError,
                 helperText: endDateError,
                 size: 'small',
+                fullWidth: true,
                 sx: {
                   '& .MuiOutlinedInput-root': {
                     backgroundColor: beige2,

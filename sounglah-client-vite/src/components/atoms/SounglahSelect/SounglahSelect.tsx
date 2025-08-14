@@ -95,9 +95,9 @@ export function SounglahSelect({
         }}
         sx={{
           background: bg,
+          width: '100%',
           borderRadius: '6px',
           minHeight: '40px',
-          minWidth: '180px',
           fontFamily: 'inherit',
           '& .MuiOutlinedInput-notchedOutline': {
             borderColor: borderColor,

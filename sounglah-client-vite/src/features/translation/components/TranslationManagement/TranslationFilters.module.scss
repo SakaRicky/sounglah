@@ -32,7 +32,7 @@
   width: 100%;
   min-width: 0;
 
-  @media (max-width: 600px) {
+  @media (max-width: $breakpoint-sm) {
     flex-direction: row;
     gap: 0.5rem;
     width: 100%;
@@ -45,21 +45,16 @@
   }
 }
 
-.dateRangeGroup > * {
-  width: 100% !important;
-  min-width: 0 !important;
-  max-width: 100% !important;
-}
-
 .languageGroup {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
   background: linear-gradient(90deg, $color-beige-2 0%, $color-beige-4 100%);
   border-radius: 0.625rem;
-  padding: 0.5rem 0.875rem 0.625rem 0.875rem;
+  padding: 0.5rem 0.875rem 0.5rem 0.875rem;
   box-shadow: 0 0.0625rem 0.25rem rgba($color-brown-5, 0.06);
   border: 0.0625rem solid $color-brown-2;
+  width: 100%;
 }
 .languageLabel {
   font-size: 0.8125rem;
@@ -71,7 +66,7 @@
 }
 .selects {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .statusGroup {
@@ -87,6 +82,7 @@
   align-self: center;
   position: relative;
   overflow: visible;
+  width: 100%;
 }
 
 .statusGroup :global(.MuiFormControl-root) {
@@ -115,11 +111,12 @@
   gap: 0.25rem;
   background: linear-gradient(90deg, $color-beige-2 0%, $color-beige-4 100%);
   border-radius: 0.625rem;
-  padding: 0.5rem 0.875rem 0.625rem 0.875rem;
+  padding: 0.5rem 0.875rem 0.5rem 0.875rem;
   box-shadow: 0 0.0625rem 0.25rem rgba($color-brown-5, 0.06);
   border: 0.0625rem solid $color-brown-2;
   min-width: 16.25rem;
   align-self: center;
+  width: 100%;
 }
 .dateLabel {
   font-size: 0.8125rem;
@@ -175,7 +172,7 @@
   flex-direction: column;
   gap: 0.875rem;
 }
-@media (max-width: 900px) {
+@media (max-width: $breakpoint-xl) {
   .actionsFloating {
     position: static;
     width: 100%;
@@ -184,9 +181,7 @@
     min-width: 0;
     max-width: 21.25rem;
   }
-}
 
-@media (max-width: 900px) {
   .filtersRow {
     flex-direction: column;
     align-items: stretch;
@@ -204,4 +199,4 @@
     display: block;
     margin-top: 0;
   }
-} 
+}

@@ -5,13 +5,14 @@ $color-yellow-warm: #fde642;
 
 .pageBg {
   min-height: 100vh;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-bottom: 56px; // for pattern bar
+  padding-bottom: 56px;
 
   @media (max-width: 768px) {
-    padding-bottom: 160px; // Extra space for floating buttons
+    padding-bottom: 160px;
   }
 }
 
@@ -110,13 +111,6 @@ $color-yellow-warm: #fde642;
   &:hover:not(:disabled) {
     background: $color-orange-6;
   }
-
-  // @media (max-width: 700px) {
-  //   grid-template-columns: 1fr 1fr;
-  //   gap: 0.75rem;
-  //   margin-bottom: 1.2rem;
-  //   padding: 0 0.5rem;
-  // }
 }
 
 .stats {
@@ -214,15 +208,7 @@ $color-yellow-warm: #fde642;
   }
 } 
 
-.centerContainer {
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  padding: 0;
-  width: 100%;
-}
+// Revert centerContainer wrapper introduced today
 
 .translation-management-mobile-wrap {
   @media (max-width: 600px) {
@@ -264,6 +250,7 @@ $color-yellow-warm: #fde642;
 
 .segmentedControl {
   display: flex;
+  width: 100%;
   justify-content: center;
   margin-bottom: 1.5rem;
   background: #fff4e5;

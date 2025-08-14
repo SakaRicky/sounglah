@@ -2,16 +2,7 @@
   padding: 0 1rem;
   max-width: 1400px;
   margin: 0 auto;
-  
-  // Add mobile responsiveness classes from the original TranslationManagement
-  &.translation-management-center-mobile {
-    @media (max-width: 600px) {
-      flex-direction: column;
-      width: 100vw;
-      padding: 0;
-      gap: 0.5rem;
-    }
-  }
+  width: 100%;
 }
 
 .filtersAndActionsRow {
@@ -33,10 +24,8 @@
 
 .tableContainer {
   margin-top: 1rem;
-  // Remove custom styling to let SounglahTable handle its own styling
-  // The SounglahTable component has its own brown theme
+
   
-  // Add mobile responsiveness classes from the original TranslationManagement
   &.translation-management-table-mobile {
     @media (max-width: 600px) {
       min-width: 600px;

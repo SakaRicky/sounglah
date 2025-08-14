@@ -2,7 +2,7 @@
 
 .dateRangeContainer {
   display: flex;
-  gap: 1rem;
+  gap: 0.25rem;
   align-items: center;
 }
 
@@ -10,7 +10,7 @@
   flex: 1;
   min-width: 0;
 
-  @media (max-width: 768px) {
+  @media (max-width: $breakpoint-md) {
     width: 40vw;
   }
 }

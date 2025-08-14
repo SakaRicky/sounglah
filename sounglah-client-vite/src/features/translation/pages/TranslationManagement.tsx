@@ -8,7 +8,7 @@ import { UsersManagement } from '../../users/pages/UsersManagement';
 import { LanguageManagement } from './LanguageManagement';
 import { useNotification } from '@/contexts/NotificationContext';
 import { useUndoHistory } from '../hooks/useUndoHistory';
-import { AdminPageSkeleton, ErrorDisplay } from '@/components/atoms';
+import { ErrorDisplay } from '@/components/atoms';
 import { useTranslations, useBulkUpdateTranslations } from '../hooks/useTranslations';
 import { useCommonLanguages, useCommonReviewers } from '@/hooks/useCommonData';
 import { useModalState, useErrorHandler } from '@/hooks';

@@ -103,7 +103,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = (props) => 
   });
 
   return (
-    <div className={classes.centerContainer + ' translation-management-center-mobile'}>
+    <div className={classes.centerContainer}>
       {/* Stats Section */}
       <div>
         {state.isLoading ? (
@@ -116,7 +116,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = (props) => 
       {/* Filters Section */}
       <div className={classes.filtersAndActionsRow}>
         <div className={classes.filtersRow}>
-          <div style={{ flex: 1 }}>
+          <div style={{ width: '100%' }}>
             <div className={classes.toolRow}>
               {state.isLoading ? (
                 <FiltersSkeleton filterCount={5} />
