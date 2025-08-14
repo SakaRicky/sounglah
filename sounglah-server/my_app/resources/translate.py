@@ -25,9 +25,19 @@ class TranslateResource(Resource):
             return {'error': 'Translation model is not available'}, 500
 
         # Run translation
-        translated_ids = model_instance.generate(**tokenizer_instance(text_to_translate, return_tensors="pt", padding=True, truncation=True))
-        with tokenizer_instance.as_target_tokenizer():
-            results = [tokenizer_instance.decode(t_id, skip_special_tokens=True) for t_id in translated_ids]
+        translated_ids = model_instance.generate(
+            **tokenizer_instance(
+                text_to_translate,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+            )
+        )
+        # Decode without deprecated as_target_tokenizer; use batch_decode for sequences
+        results = tokenizer_instance.batch_decode(
+            translated_ids,
+            skip_special_tokens=True,
+        )
 
         return jsonify({
             'translate': {
