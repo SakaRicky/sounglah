@@ -5,6 +5,7 @@
   padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
+  width: 100%;
   min-height: 100vh;
   background: linear-gradient(135deg, $color-beige-0 0%, $color-beige-1 100%);
   box-shadow: 0 8px 32px rgba($color-brown-5, 0.12), 0 1.5px 4px rgba($color-brown-5, 0.06);
@@ -71,14 +72,13 @@
 
 
 // Responsive breakpoints
-@media (max-width: 768px) {
+@media (max-width: $breakpoint-xl) {
   .container {
     padding: 0.5rem;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 90%;
     box-sizing: border-box;
   }
   

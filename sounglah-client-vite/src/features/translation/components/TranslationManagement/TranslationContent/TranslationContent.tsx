@@ -8,6 +8,9 @@ import { FilterChips } from '../../FilterChips';
 import { TableHeader } from '../TableHeader';
 import { TableActions } from '../TableActions';
 import { MobileActions } from '../MobileActions';
+import Drawer from '@mui/material/Drawer';
+import Divider from '@mui/material/Divider';
+import { SounglahButton } from '@/components/atoms/SounglahButton/SounglahButton';
 import { BulkConfirmDialog } from '../BulkConfirmDialog';
 import { getTranslationTableColumns } from '../translationTableColumns';
 import { useTranslationContent } from '../../../hooks/useTranslationContent';
@@ -113,33 +116,37 @@ export const TranslationContent: React.FC<TranslationContentProps> = (props) => 
         )}
       </div>
 
-      {/* Filters Section */}
-      <div className={classes.filtersAndActionsRow}>
-        <div className={classes.filtersRow}>
-          <div style={{ width: '100%' }}>
-            <div className={classes.toolRow}>
-              {state.isLoading ? (
-                <FiltersSkeleton filterCount={5} />
-              ) : (
-                <TranslationFiltersComponent
-                  languages={state.languages}
-                  languageFilter={state.filters.languageFilter}
-                  targetLanguageFilter={state.filters.targetLanguageFilter}
-                  statusFilter={state.filters.statusFilter}
-                  startDate={state.filters.startDate}
-                  endDate={state.filters.endDate}
-                  onLanguageChange={state.filterHandlers.setLanguageFilter}
-                  onTargetLanguageChange={state.filterHandlers.setTargetLanguageFilter}
-                  onStatusChange={state.filterHandlers.setStatusFilter}
-                  onStartDateChange={state.filterHandlers.setStartDate}
-                  onEndDateChange={state.filterHandlers.setEndDate}
-                  statusOptions={STATUS_OPTIONS}
-                />
-              )}
+      {/* Filters Section - inline on desktop only */}
+      {!state.isMobile && (
+        <div className={classes.filtersAndActionsRow}>
+          <div className={classes.filtersRow}>
+            <div style={{ width: '100%' }}>
+              <div className={classes.toolRow}>
+                {state.isLoading ? (
+                  <FiltersSkeleton filterCount={5} />
+                ) : (
+                  <TranslationFiltersComponent
+                    languages={state.languages}
+                    languageFilter={state.filters.languageFilter}
+                    targetLanguageFilter={state.filters.targetLanguageFilter}
+                    statusFilter={state.filters.statusFilter}
+                    startDate={state.filters.startDate}
+                    endDate={state.filters.endDate}
+                    searchTerm={state.filters.searchTerm}
+                    onLanguageChange={state.filterHandlers.setLanguageFilter}
+                    onTargetLanguageChange={state.filterHandlers.setTargetLanguageFilter}
+                    onStatusChange={state.filterHandlers.setStatusFilter}
+                    onStartDateChange={state.filterHandlers.setStartDate}
+                    onEndDateChange={state.filterHandlers.setEndDate}
+                    onSearchChange={state.filterHandlers.setSearchTerm}
+                    statusOptions={STATUS_OPTIONS}
+                  />
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Filter Chips */}
       {!state.isLoading && (
@@ -194,6 +201,8 @@ export const TranslationContent: React.FC<TranslationContentProps> = (props) => 
           <MobileActions
             onAddClick={handlers.onAddClick}
             onUploadClick={handlers.onUploadClick}
+            onFilterClick={() => handlers.setFiltersDrawerOpen?.(true)}
+            activeFilterCount={state.activeFilterCount}
           />
         )}
 
@@ -238,6 +247,64 @@ export const TranslationContent: React.FC<TranslationContentProps> = (props) => 
         >
           {state.tableState.selectedIds.size} item{state.tableState.selectedIds.size !== 1 ? 's' : ''} selected
         </div>
+      )}
+
+      {/* Mobile Filters Drawer */}
+      {state.isMobile && (
+        <Drawer
+          anchor="bottom"
+          open={state.filtersDrawerOpen}
+          onClose={() => handlers.setFiltersDrawerOpen?.(false)}
+          PaperProps={{
+            sx: {
+              borderTopLeftRadius: '16px',
+              borderTopRightRadius: '16px',
+              maxHeight: '85vh',
+              background: 'linear-gradient(90deg, var(--mantine-color-beige-2) 0%, var(--mantine-color-beige-4) 100%)',
+              borderTop: '1px solid var(--mantine-color-brown-2)'
+            },
+          }}
+        >
+          <div style={{ padding: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, color: 'var(--mantine-color-brown-5)' }}>Filters</h3>
+              <SounglahButton
+                variant="outline"
+                borderRadius="medium"
+                onClick={() => handlers.handleResetStagedFilters?.()}
+                style={{ padding: '6px 12px', fontSize: 12 }}
+              >
+                Reset
+              </SounglahButton>
+            </div>
+            <Divider style={{ margin: '8px 0 12px' }} />
+            <TranslationFiltersComponent
+              languages={state.languages}
+              languageFilter={state.stagedFilters.languageFilter}
+              targetLanguageFilter={state.stagedFilters.targetLanguageFilter}
+              statusFilter={state.stagedFilters.statusFilter}
+              startDate={state.stagedFilters.startDate}
+              endDate={state.stagedFilters.endDate}
+              searchTerm={state.stagedFilters.searchTerm}
+              onLanguageChange={value => handlers.setStagedFilters?.({ key: 'languageFilter', value })}
+              onTargetLanguageChange={value => handlers.setStagedFilters?.({ key: 'targetLanguageFilter', value })}
+              onStatusChange={value => handlers.setStagedFilters?.({ key: 'statusFilter', value })}
+              onStartDateChange={value => handlers.setStagedFilters?.({ key: 'startDate', value })}
+              onEndDateChange={value => handlers.setStagedFilters?.({ key: 'endDate', value })}
+              onSearchChange={value => handlers.setStagedFilters?.({ key: 'searchTerm', value })}
+              statusOptions={STATUS_OPTIONS}
+            />
+            <div style={{ position: 'sticky', bottom: 0, paddingTop: 12, background: 'linear-gradient(90deg, var(--mantine-color-beige-2) 0%, var(--mantine-color-beige-4) 100%)' }}>
+              <Divider style={{ marginBottom: 12 }} />
+              <SounglahButton
+                style={{ width: '100%' }}
+                onClick={() => handlers.applyStagedFilters?.()}
+              >
+                APPLY FILTERS
+              </SounglahButton>
+            </div>
+          </div>
+        </Drawer>
       )}
     </div>
   );

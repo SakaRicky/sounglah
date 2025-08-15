@@ -8,6 +8,7 @@ export interface TranslationFilters {
   startDate: string;
   endDate: string;
   reviewerFilter: string;
+  searchTerm: string;
 }
 
 export interface DebouncedFilters {
@@ -16,6 +17,7 @@ export interface DebouncedFilters {
   debouncedStatusFilter: string;
   debouncedStartDate: string;
   debouncedEndDate: string;
+  debouncedSearchTerm: string;
 }
 
 export interface FilterHandlers {
@@ -25,6 +27,7 @@ export interface FilterHandlers {
   setStartDate: (value: string) => void;
   setEndDate: (value: string) => void;
   setReviewerFilter: (value: string) => void;
+  setSearchTerm: (value: string) => void;
   removeFilter: (key: string) => void;
   clearAllFilters: () => void;
 }
@@ -37,6 +40,7 @@ export const useTranslationFilters = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reviewerFilter, setReviewerFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Debounced filters for API calls
   const [debouncedLanguageFilter, setDebouncedLanguageFilter] = useState('');
@@ -44,6 +48,7 @@ export const useTranslationFilters = () => {
   const [debouncedStatusFilter, setDebouncedStatusFilter] = useState('');
   const [debouncedStartDate, setDebouncedStartDate] = useState('');
   const [debouncedEndDate, setDebouncedEndDate] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   
   // Timeout refs for debouncing
   const languageFilterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -51,6 +56,7 @@ export const useTranslationFilters = () => {
   const statusFilterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const startDateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const endDateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Debounced filter setters for performance optimization
   const setLanguageFilterWithLog = useCallback((val: string) => {
@@ -103,6 +109,16 @@ export const useTranslationFilters = () => {
     }, 300);
   }, []);
 
+  const setSearchTermWithLog = useCallback((val: string) => {
+    setSearchTerm(val);
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearchTerm(val);
+    }, 300);
+  }, []);
+
   // Filter removal handlers
   const removeFilter = useCallback((key: string) => {
     switch (key) {
@@ -129,6 +145,16 @@ export const useTranslationFilters = () => {
         setEndDate('');
         setDebouncedEndDate('');
         break;
+      case 'search':
+        setSearchTerm('');
+        setDebouncedSearchTerm('');
+        break;
+      case 'dateRange':
+        setStartDate('');
+        setEndDate('');
+        setDebouncedStartDate('');
+        setDebouncedEndDate('');
+        break;
     }
   }, []);
 
@@ -139,11 +165,13 @@ export const useTranslationFilters = () => {
     setStartDate('');
     setEndDate('');
     setReviewerFilter('');
+    setSearchTerm('');
     setDebouncedLanguageFilter('');
     setDebouncedTargetLanguageFilter('');
     setDebouncedStatusFilter('');
     setDebouncedStartDate('');
     setDebouncedEndDate('');
+    setDebouncedSearchTerm('');
   }, []);
 
   // Build query parameters for API calls
@@ -154,10 +182,11 @@ export const useTranslationFilters = () => {
     if (debouncedStatusFilter) params.status = debouncedStatusFilter;
     if (debouncedStartDate) params.created_at_start = debouncedStartDate;
     if (debouncedEndDate) params.created_at_end = debouncedEndDate;
+    if (debouncedSearchTerm) params.search = debouncedSearchTerm;
     params.page = page + 1; // 1-based page for backend
     params.limit = rowsPerPage;
     return params;
-  }, [debouncedLanguageFilter, debouncedTargetLanguageFilter, debouncedStatusFilter, debouncedStartDate, debouncedEndDate]);
+  }, [debouncedLanguageFilter, debouncedTargetLanguageFilter, debouncedStatusFilter, debouncedStartDate, debouncedEndDate, debouncedSearchTerm]);
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
@@ -167,9 +196,10 @@ export const useTranslationFilters = () => {
       statusFilter ||
       startDate ||
       endDate ||
-      reviewerFilter
+      reviewerFilter ||
+      searchTerm
     );
-  }, [languageFilter, targetLanguageFilter, statusFilter, startDate, endDate, reviewerFilter]);
+  }, [languageFilter, targetLanguageFilter, statusFilter, startDate, endDate, reviewerFilter, searchTerm]);
 
   // Get active filter count
   const activeFilterCount = useMemo(() => {
@@ -180,8 +210,9 @@ export const useTranslationFilters = () => {
     if (startDate) count++;
     if (endDate) count++;
     if (reviewerFilter) count++;
+    if (searchTerm) count++;
     return count;
-  }, [languageFilter, targetLanguageFilter, statusFilter, startDate, endDate, reviewerFilter]);
+  }, [languageFilter, targetLanguageFilter, statusFilter, startDate, endDate, reviewerFilter, searchTerm]);
 
   const filters: TranslationFilters = {
     languageFilter,
@@ -190,6 +221,7 @@ export const useTranslationFilters = () => {
     startDate,
     endDate,
     reviewerFilter,
+    searchTerm,
   };
 
   const debouncedFilters: DebouncedFilters = {
@@ -198,6 +230,7 @@ export const useTranslationFilters = () => {
     debouncedStatusFilter,
     debouncedStartDate,
     debouncedEndDate,
+    debouncedSearchTerm,
   };
 
   const handlers: FilterHandlers = {
@@ -207,6 +240,7 @@ export const useTranslationFilters = () => {
     setStartDate: setStartDateWithLog,
     setEndDate: setEndDateWithLog,
     setReviewerFilter,
+    setSearchTerm: setSearchTermWithLog,
     removeFilter,
     clearAllFilters,
   };

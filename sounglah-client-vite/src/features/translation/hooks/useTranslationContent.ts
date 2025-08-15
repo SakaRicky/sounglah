@@ -16,6 +16,7 @@ export interface TranslationContentState {
   reviewers: User[];
   filters: TranslationFilters;
   filterHandlers: FilterHandlers;
+  stagedFilters: TranslationFilters;
   tableState: TableState;
   tableHandlers: TableHandlers;
   selectAllChecked: boolean;
@@ -31,6 +32,8 @@ export interface TranslationContentState {
   isMobile: boolean;
   showScrollCue: boolean;
   tableContainerRef: React.RefObject<HTMLDivElement | null>;
+  filtersDrawerOpen: boolean;
+  activeFilterCount: number;
 }
 
 export interface TranslationContentHandlers {
@@ -42,6 +45,10 @@ export interface TranslationContentHandlers {
   handleApprove: (translation: Translation) => void;
   handleDeny: (translation: Translation) => void;
   getStatusBadge: (status: string, isMobile?: boolean) => { type: string; color: string; symbol?: string; title?: string; text?: string; style?: string };
+  setFiltersDrawerOpen?: (open: boolean) => void;
+  setStagedFilters?: (update: { key: keyof TranslationFilters; value: string }) => void;
+  applyStagedFilters?: () => void;
+  handleResetStagedFilters?: () => void;
 }
 
 export const useTranslationContent = (
@@ -72,7 +79,14 @@ export const useTranslationContent = (
     selectAllIndeterminate,
   } = useTranslationTable(
     translations, 
-    [filters.languageFilter, filters.statusFilter, filters.startDate, filters.endDate], 
+    [
+      filters.languageFilter,
+      filters.targetLanguageFilter,
+      filters.statusFilter,
+      filters.startDate,
+      filters.endDate,
+      filters.searchTerm,
+    ], 
     totalCount,
     {
       page,
@@ -90,6 +104,8 @@ export const useTranslationContent = (
   const isMobile = useMediaQuery('(max-width: 768px)');
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const [showScrollCue, setShowScrollCue] = useState(false);
+  const [filtersDrawerOpen, setFiltersDrawerOpen] = useState(false);
+  const [stagedFilters, setStagedFiltersState] = useState<TranslationFilters>(filters);
 
   // Mobile scroll detection
   useEffect(() => {
@@ -126,6 +142,50 @@ export const useTranslationContent = (
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [tableHandlers]);
 
+  // Keep staged filters in sync when opening drawer
+  useEffect(() => {
+    if (filtersDrawerOpen) {
+      setStagedFiltersState(filters);
+    }
+  }, [filtersDrawerOpen, filters]);
+
+  const setStagedFilters = useCallback((update: { key: keyof TranslationFilters; value: string }) => {
+    setStagedFiltersState((prev) => ({ ...prev, [update.key]: update.value }));
+  }, []);
+
+  const applyStagedFilters = useCallback(() => {
+    // Apply staged values to real filters through handlers
+    filterHandlers.setLanguageFilter(stagedFilters.languageFilter);
+    filterHandlers.setTargetLanguageFilter(stagedFilters.targetLanguageFilter);
+    filterHandlers.setStatusFilter(stagedFilters.statusFilter);
+    filterHandlers.setStartDate(stagedFilters.startDate);
+    filterHandlers.setEndDate(stagedFilters.endDate);
+    filterHandlers.setSearchTerm(stagedFilters.searchTerm);
+    setFiltersDrawerOpen(false);
+  }, [stagedFilters, filterHandlers]);
+
+  const handleResetStagedFilters = useCallback(() => {
+    setStagedFiltersState({
+      languageFilter: '',
+      targetLanguageFilter: '',
+      statusFilter: '',
+      startDate: '',
+      endDate: '',
+      reviewerFilter: '',
+      searchTerm: '',
+    });
+  }, []);
+
+  const activeFilterCount = (
+    (filters.languageFilter ? 1 : 0) +
+    (filters.targetLanguageFilter ? 1 : 0) +
+    (filters.statusFilter ? 1 : 0) +
+    (filters.startDate ? 1 : 0) +
+    (filters.endDate ? 1 : 0) +
+    (filters.reviewerFilter ? 1 : 0) +
+    (filters.searchTerm ? 1 : 0)
+  );
+
   const getStatusBadge = useCallback((status: string, isMobile?: boolean) => {
     if (isMobile) {
       if (status === 'approved') return { type: 'mobile', color: '#388e3c', symbol: '✓', title: 'Approved' };
@@ -145,6 +205,7 @@ export const useTranslationContent = (
     reviewers,
     filters,
     filterHandlers,
+    stagedFilters,
     tableState,
     tableHandlers,
     selectAllChecked,
@@ -160,6 +221,8 @@ export const useTranslationContent = (
     isMobile,
     showScrollCue,
     tableContainerRef,
+    filtersDrawerOpen,
+    activeFilterCount,
   };
 
   const handlers: TranslationContentHandlers = {
@@ -171,6 +234,10 @@ export const useTranslationContent = (
     handleApprove,
     handleDeny,
     getStatusBadge,
+    setFiltersDrawerOpen,
+    setStagedFilters,
+    applyStagedFilters,
+    handleResetStagedFilters,
   };
 
   return { state, handlers };

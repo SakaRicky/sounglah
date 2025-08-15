@@ -9,6 +9,7 @@ export interface FilterChipsProps {
   reviewerFilter: string;
   startDate: string;
   endDate: string;
+  searchTerm?: string;
   onRemove: (key: string) => void;
   onClearAll: () => void;
 }
@@ -20,6 +21,7 @@ export const FilterChips: React.FC<FilterChipsProps> = ({
   reviewerFilter, 
   startDate, 
   endDate, 
+  searchTerm = '',
   onRemove, 
   onClearAll 
 }) => {
@@ -37,6 +39,7 @@ export const FilterChips: React.FC<FilterChipsProps> = ({
   if (languageFilter) chips.push({ label: `Source: ${languageFilter}`, key: 'language' });
   if (targetLanguageFilter) chips.push({ label: `Target: ${targetLanguageFilter}`, key: 'targetLanguage' });
   if (reviewerFilter) chips.push({ label: `Reviewer: ${reviewerFilter}`, key: 'reviewer' });
+  if (searchTerm) chips.push({ label: `Search: ${searchTerm}`, key: 'search' });
   // Add date range chip if either date is set
   if (startDate || endDate) {
     let dateLabel = 'Date Range: ';

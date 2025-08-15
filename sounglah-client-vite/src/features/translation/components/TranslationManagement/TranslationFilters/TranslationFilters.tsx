@@ -29,11 +29,13 @@ export const TranslationFiltersWrapper: React.FC<TranslationFiltersWrapperProps>
               statusFilter={filters.statusFilter}
               startDate={filters.startDate}
               endDate={filters.endDate}
+              searchTerm={filters.searchTerm}
               onLanguageChange={handlers.setLanguageFilter}
               onTargetLanguageChange={handlers.setTargetLanguageFilter}
               onStatusChange={handlers.setStatusFilter}
               onStartDateChange={handlers.setStartDate}
               onEndDateChange={handlers.setEndDate}
+              onSearchChange={handlers.setSearchTerm}
               statusOptions={statusOptions}
             />
           </div>
@@ -47,6 +49,7 @@ export const TranslationFiltersWrapper: React.FC<TranslationFiltersWrapperProps>
         reviewerFilter={filters.reviewerFilter}
         startDate={filters.startDate}
         endDate={filters.endDate}
+        searchTerm={filters.searchTerm}
         onRemove={handlers.removeFilter}
         onClearAll={handlers.clearAllFilters}
       />
