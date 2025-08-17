@@ -8,6 +8,8 @@ import type { TableState, TableHandlers } from './useTranslationTable';
 import type { BulkActionState, BulkActionHandlers } from './useBulkActions';
 import type { ExportState, ExportHandlers } from './useExport';
 import { useTranslationTable } from './useTranslationTable';
+import { useAugment } from './useAugment';
+import type { AugmentState } from './useAugment';
 import { useBulkActions } from './useBulkActions';
 
 export interface TranslationContentState {
@@ -34,6 +36,7 @@ export interface TranslationContentState {
   tableContainerRef: React.RefObject<HTMLDivElement | null>;
   filtersDrawerOpen: boolean;
   activeFilterCount: number;
+  augmentState: AugmentState;
 }
 
 export interface TranslationContentHandlers {
@@ -49,6 +52,7 @@ export interface TranslationContentHandlers {
   setStagedFilters?: (update: { key: keyof TranslationFilters; value: string }) => void;
   applyStagedFilters?: () => void;
   handleResetStagedFilters?: () => void;
+  handleStartAugment?: (payload?: { sample: boolean; sample_size?: number }) => void;
 }
 
 export const useTranslationContent = (
@@ -106,6 +110,7 @@ export const useTranslationContent = (
   const [showScrollCue, setShowScrollCue] = useState(false);
   const [filtersDrawerOpen, setFiltersDrawerOpen] = useState(false);
   const [stagedFilters, setStagedFiltersState] = useState<TranslationFilters>(filters);
+  const { state: augmentState, start: startAugment } = useAugment();
 
   // Mobile scroll detection
   useEffect(() => {
@@ -223,6 +228,7 @@ export const useTranslationContent = (
     tableContainerRef,
     filtersDrawerOpen,
     activeFilterCount,
+    augmentState,
   };
 
   const handlers: TranslationContentHandlers = {
@@ -238,6 +244,7 @@ export const useTranslationContent = (
     setStagedFilters,
     applyStagedFilters,
     handleResetStagedFilters,
+    handleStartAugment: (payload) => startAugment(payload ?? { sample: true, sample_size: 50 }),
   };
 
   return { state, handlers };

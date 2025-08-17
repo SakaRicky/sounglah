@@ -177,7 +177,13 @@ class GetTranslationByIdResource(Resource):
         if 'target_lang_id' in data:
             translation.target_lang_id = data['target_lang_id']
         if 'status' in data:
-            translation.status = data['status']
+            previous_status = translation.status
+            new_status = data['status']
+            translation.status = new_status
+            if new_status == 'approved' and previous_status != 'approved':
+                translation.approved_at = datetime.utcnow()
+            elif previous_status == 'approved' and new_status != 'approved':
+                translation.approved_at = None
         if 'domain' in data:
             translation.domain = data['domain']
         translation.updated_at = datetime.utcnow()
@@ -270,7 +276,12 @@ class BulkUpdateTranslationsResource(Resource):
             if not translation:
                 failed.append(id)
                 continue
+            previous_status = translation.status
             translation.status = status
+            if status == 'approved' and previous_status != 'approved':
+                translation.approved_at = datetime.utcnow()
+            elif previous_status == 'approved' and status != 'approved':
+                translation.approved_at = None
             translation.updated_at = datetime.utcnow()
             try:
                 db.session.add(translation)

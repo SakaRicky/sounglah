@@ -1,5 +1,5 @@
 import type { SounglahTableColumn } from '@/components/atoms/Table';
-import { Checkbox, Tooltip, IconButton } from '@mui/material';
+import { Checkbox } from '@mui/material';
 import { ActionIcons } from '@/components/atoms/ActionIcons';
 import type { Translation } from '../../api/types';
 import type { User } from '@/types';
@@ -15,7 +15,6 @@ export function getTranslationTableColumns({
   handleSelectAll,
   getStatusBadge,
   reviewers,
-  handleEditClick,
   handleApprove,
   handleDeny,
   actionsHeader,
@@ -44,6 +43,7 @@ export function getTranslationTableColumns({
           checked={selectAllChecked}
           indeterminate={selectAllIndeterminate}
           onChange={(e) => handleSelectAll(e.target.checked)}
+          onClick={(e) => e.stopPropagation()}
           aria-label="Select all translations on this page"
           size="small"
           sx={{
@@ -61,6 +61,7 @@ export function getTranslationTableColumns({
         <Checkbox
           checked={selectedIds.has(row.id)}
           onChange={(e) => handleSelectRow(row.id, e.target.checked)}
+          onClick={(e) => e.stopPropagation()}
           aria-label={`Select translation ${row.id}`}
           size="small"
           sx={{
@@ -80,7 +81,7 @@ export function getTranslationTableColumns({
     ...(!isMobile ? [{
       label: 'Source Language',
       accessor: 'source_language',
-      render: (row) => row.source_language.name,
+      render: (row: { source_language: { name: string; }; }) => row.source_language.name,
     }] : []),
     {
       label: 'Target Text',
@@ -95,27 +96,14 @@ export function getTranslationTableColumns({
     ...(!isMobile ? [{
       label: 'Reviewer',
       accessor: 'reviewer',
-      render: (_row, idx) => reviewers.length > 0 ? reviewers[idx % reviewers.length].username : '',
+      render: (_row: Translation, idx: number) => reviewers.length > 0 ? reviewers[idx % reviewers.length].username : '',
     }] : []),
     {
       label: '',
       accessor: 'actions',
       headerRender: actionsHeader ? () => actionsHeader : () => null,
       render: (row) => (
-        <span style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
-          <Tooltip title={`Edit translation ${row.id}`}>
-            <span>
-              <IconButton
-                onClick={() => handleEditClick(row)}
-                size="small"
-                style={{ color: 'var(--mantine-color-brown-1)' }}
-                aria-label={`Edit translation ${row.id}`}
-                aria-describedby={`edit-translation-${row.id}-description`}
-              >
-                <span role="img" aria-hidden="true">✏️</span>
-              </IconButton>
-            </span>
-          </Tooltip>
+        <span style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
           <ActionIcons
             onApprove={() => handleApprove(row)}
             onDeny={() => handleDeny(row)}

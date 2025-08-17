@@ -5,9 +5,13 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import { SounglahButton } from '@/components/atoms/SounglahButton/SounglahButton';
 import CircularProgress from '@mui/material/CircularProgress';
+import Tooltip from '@mui/material/Tooltip';
+import IconButton from '@mui/material/IconButton';
+import ThumbUpAltIcon from '@mui/icons-material/ThumbUpAlt';
+import ThumbDownAltIcon from '@mui/icons-material/ThumbDownAlt';
 import TextField from '@mui/material/TextField';
 import { SounglahSelect } from '@/components/atoms/SounglahSelect';
-import { createTranslation, updateTranslation } from '../../api/translations';
+import { useCreateTranslation, useUpdateTranslation } from '../../hooks/useTranslations';
 import type { Language, Translation } from '../../api/types';
 import { AxiosError } from 'axios';
 import classes from './CreateTranslationModal.module.scss';
@@ -23,6 +27,8 @@ interface CreateTranslationModalProps {
   onSuccess: (updated?: Translation) => void;
   translation?: Translation | null;
   mode?: 'add' | 'edit';
+  onApprove?: (t: Translation) => Promise<void> | void;
+  onReject?: (t: Translation) => Promise<void> | void;
 }
 
 export const CreateTranslationModal = React.memo<CreateTranslationModalProps>(({ 
@@ -31,7 +37,9 @@ export const CreateTranslationModal = React.memo<CreateTranslationModalProps>(({
   languages, 
   onSuccess, 
   translation = null, 
-  mode = 'add' 
+  mode = 'add',
+  onApprove,
+  onReject,
 }) => {
   // Standardized form state management
   const [formState, formHandlers] = useFormState({
@@ -42,6 +50,9 @@ export const CreateTranslationModal = React.memo<CreateTranslationModalProps>(({
   });
   
   const notify = useNotification();
+  const [actionLoading, setActionLoading] = React.useState<null | 'approve' | 'reject'>(null);
+  const createMutation = useCreateTranslation();
+  const updateMutation = useUpdateTranslation();
 
   useEffect(() => {
     if (translation && mode === 'edit') {
@@ -92,32 +103,25 @@ export const CreateTranslationModal = React.memo<CreateTranslationModalProps>(({
     formHandlers.setLoading(true);
     try {
       if (mode === 'edit' && translation) {
-        const updated = await updateTranslation(translation.id, {
-          source_text: formState.data.source_text,
-          target_text: formState.data.target_text,
-          source_lang_id: Number(formState.data.source_lang_id),
-          target_lang_id: Number(formState.data.target_lang_id),
+        const updated = await updateMutation.mutateAsync({
+          id: translation.id,
+          data: {
+            source_text: formState.data.source_text,
+            target_text: formState.data.target_text,
+            source_lang_id: Number(formState.data.source_lang_id),
+            target_lang_id: Number(formState.data.target_lang_id),
+          }
         });
         handleClose();
-        notify.notify({
-          type: 'success',
-          title: 'Translation Updated',
-          detail: 'The translation pair was updated successfully.'
-        });
         onSuccess(updated);
       } else {
-        await createTranslation({
+        await createMutation.mutateAsync({
           source_text: formState.data.source_text,
           target_text: formState.data.target_text,
           source_lang_id: Number(formState.data.source_lang_id),
           target_lang_id: Number(formState.data.target_lang_id),
         });
         handleClose();
-        notify.notify({
-          type: 'success',
-          title: 'Translation Added',
-          detail: 'The translation pair was created successfully.'
-        });
         onSuccess();
       }
     } catch (err: unknown) {
@@ -140,7 +144,29 @@ export const CreateTranslationModal = React.memo<CreateTranslationModalProps>(({
     } finally {
       formHandlers.setLoading(false);
     }
-  }, [formState, mode, translation, handleClose, notify, onSuccess]);
+  }, [formState, mode, translation, handleClose, onSuccess, updateMutation, createMutation]);
+
+  const handleApproveClick = useCallback(async () => {
+    if (!translation || !onApprove) return;
+    try {
+      setActionLoading('approve');
+      await onApprove(translation);
+      handleClose();
+    } finally {
+      setActionLoading(null);
+    }
+  }, [translation, onApprove, handleClose]);
+
+  const handleRejectClick = useCallback(async () => {
+    if (!translation || !onReject) return;
+    try {
+      setActionLoading('reject');
+      await onReject(translation);
+      handleClose();
+    } finally {
+      setActionLoading(null);
+    }
+  }, [translation, onReject, handleClose]);
 
   // Memoize language options to prevent unnecessary re-renders
   const languageOptions = useMemo(() => 
@@ -249,6 +275,44 @@ export const CreateTranslationModal = React.memo<CreateTranslationModalProps>(({
                 >
                   Cancel
                 </SounglahButton>
+                {mode === 'edit' && (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <Tooltip title="Reject" placement="top">
+                      <span>
+                        <IconButton
+                          onClick={handleRejectClick}
+                          disabled={formState.isLoading || actionLoading !== null}
+                          size="small"
+                          aria-label="Reject translation"
+                          sx={{ color: '#d32f2f' }}
+                        >
+                          {actionLoading === 'reject' ? (
+                            <CircularProgress size={16} />
+                          ) : (
+                            <ThumbDownAltIcon />
+                          )}
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Approve" placement="top">
+                      <span>
+                        <IconButton
+                          onClick={handleApproveClick}
+                          disabled={formState.isLoading || actionLoading !== null}
+                          size="small"
+                          aria-label="Approve translation"
+                          sx={{ color: '#078930' }}
+                        >
+                          {actionLoading === 'approve' ? (
+                            <CircularProgress size={16} />
+                          ) : (
+                            <ThumbUpAltIcon />
+                          )}
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  </div>
+                )}
                 <SounglahButton
                   variant="primary"
                   type="submit"

@@ -225,6 +225,8 @@ export default function TranslationManagement() {
         onSuccess={handleEditSave}
         translation={translationModalState.data}
         mode={translationModalState.mode === 'view' ? 'add' : translationModalState.mode}
+        onApprove={async (t) => handleApprove(t)}
+        onReject={async (t) => handleDeny(t)}
       />
       <CSVUploadModal
         opened={csvModalState.isOpen}

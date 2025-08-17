@@ -70,6 +70,7 @@ def create_app(config_object=None):
     from .resources.languages import languages_bp
     from .resources.detectlang import detectlang_bp
     from .resources.translate import translate_bp
+    from .resources.augment import augment_bp
     app.register_blueprint(translations_bp, url_prefix='/api/translations')
     app.register_blueprint(users_bp, url_prefix='/api/users')
     app.register_blueprint(roles_bp, url_prefix='/api/roles')
@@ -77,6 +78,7 @@ def create_app(config_object=None):
     app.register_blueprint(languages_bp, url_prefix='/api/languages')
     app.register_blueprint(detectlang_bp, url_prefix='/api/detectlang')
     app.register_blueprint(translate_bp, url_prefix='/api/translate')
+    app.register_blueprint(augment_bp, url_prefix='/api/augment')
 
     # --- Serve React App (SPA Routing) ---
     @app.route('/')

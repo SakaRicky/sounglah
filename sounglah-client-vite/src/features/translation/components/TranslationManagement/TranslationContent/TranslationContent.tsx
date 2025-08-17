@@ -102,7 +102,14 @@ export const TranslationContent: React.FC<TranslationContentProps> = (props) => 
     handleEditClick: handlers.handleEditClick,
     handleApprove: handlers.handleApprove,
     handleDeny: handlers.handleDeny,
-    actionsHeader: <TableHeader onAddClick={handlers.onAddClick} onUploadClick={handlers.onUploadClick} />,
+    actionsHeader: (
+      <TableHeader 
+        onAddClick={handlers.onAddClick} 
+        onUploadClick={handlers.onUploadClick} 
+        onAugmentClick={(payload) => handlers.handleStartAugment?.(payload)}
+        augmenting={state.augmentState?.running}
+      />
+    ),
   });
 
   return (
@@ -173,6 +180,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = (props) => 
             columns={translationTableColumns}
             data={state.translations}
             getRowKey={(row) => row.id}
+            onRowClick={handlers.handleEditClick}
             pagination
             rowsPerPageOptions={[5, 10, 25, 50, 100]}
             defaultRowsPerPage={25}

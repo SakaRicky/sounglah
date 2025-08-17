@@ -135,6 +135,8 @@ def seed_from_csv(file_path):
             status=status,
             reviewer_id=reviewer_id
         )
+        if status == 'approved':
+            pair.approved_at = pair.created_at
         translation_pairs.append(pair)
 
     # Batch insert all records at once
@@ -171,10 +173,26 @@ def seed_from_csv_fast(file_path):
     
     # Use raw SQL for maximum speed
     sql = f"""
-    INSERT INTO translation_pair (source_text, target_text, source_lang_id, target_lang_id, domain, status, reviewer_id)
+    INSERT INTO translation_pairs (source_text, target_text, source_lang_id, target_lang_id, domain, status, reviewer_id, approved_at, created_at, updated_at)
     VALUES {','.join(values)}
     """
     
+    # Ensure approved_at set to created_at for approved rows on raw insert
+    from datetime import datetime
+    now = datetime.utcnow().isoformat(sep=' ', timespec='seconds')
+    values_with_times = []
+    for _, row in df.iterrows():
+        reviewer_id = random.choice(reviewer_ids) if reviewer_ids else None
+        st = row['source_text'].replace("'", "''")
+        tt = row['target_text'].replace("'", "''")
+        approved_val = f"'{now}'" if status == 'approved' else 'NULL'
+        values_with_times.append(
+            f"('{st}', '{tt}', {source_lang_id}, {target_lang_id}, NULL, '{status}', {reviewer_id if reviewer_id else 'NULL'}, {approved_val}, '{now}', '{now}')"
+        )
+    sql = """
+    INSERT INTO translation_pairs (source_text, target_text, source_lang_id, target_lang_id, domain, status, reviewer_id, approved_at, created_at, updated_at)
+    VALUES %s
+    """ % ",".join(values_with_times)
     db.session.execute(text(sql))
     db.session.commit()
     print("✅ Ultra-fast translations seeding completed!")

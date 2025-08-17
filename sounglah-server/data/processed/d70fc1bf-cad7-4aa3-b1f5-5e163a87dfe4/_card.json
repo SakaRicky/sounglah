@@ -1,0 +1,58 @@
+{
+  "run_id": "d70fc1bf-cad7-4aa3-b1f5-5e163a87dfe4",
+  "created_at_utc": "2025-08-17T23:31:00Z",
+  "counts": {
+    "exported": 0,
+    "checked": 0,
+    "dropped_lang": 0,
+    "kept_lowconf": 0,
+    "dropped_empty": 0,
+    "dropped_lenratio": 0,
+    "dropped_dup_exact": 0,
+    "dropped_dup_near": 0,
+    "clean": 0,
+    "augmented": 0
+  },
+  "filters": {
+    "langid_min_prob": 0.55,
+    "langid_min_margin": 0.2,
+    "skip_short_words": 3,
+    "skip_len_check_if_short": 3,
+    "len_ratio": [
+      0.33,
+      3.0
+    ],
+    "dup_near_jaccard": 0.9,
+    "dup_near_key": "source_text"
+  },
+  "modes": {
+    "sample_size": null
+  },
+  "langs": {
+    "source": [],
+    "target": []
+  },
+  "notes": "Phase-2: normalize + lang-id + quality filters + near-dup + splits. No augmentation yet.",
+  "columns": [
+    "id",
+    "source_text",
+    "target_text",
+    "source_lang",
+    "target_lang",
+    "created_at"
+  ],
+  "license": "internal",
+  "splits": {
+    "counts": {
+      "train": 0,
+      "dev": 0,
+      "test": 0
+    },
+    "seed": 42,
+    "frac": [
+      0.8,
+      0.1,
+      0.1
+    ]
+  }
+}

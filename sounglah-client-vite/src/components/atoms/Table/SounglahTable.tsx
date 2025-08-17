@@ -24,6 +24,7 @@ interface SounglahTableProps<T> {
   columns: SounglahTableColumn<T>[];
   data: T[];
   getRowKey: (row: T, rowIndex: number) => string | number;
+  onRowClick?: (row: T, rowIndex: number) => void;
   tableClassName?: string;
   containerClassName?: string;
   pagination?: boolean;
@@ -47,6 +48,7 @@ export function SounglahTable<T extends object>({
   columns,
   data,
   getRowKey,
+  onRowClick,
   pagination = false,
   rowsPerPageOptions = [5, 10, 25, 50, 100],
   defaultRowsPerPage = 25,
@@ -140,7 +142,8 @@ export function SounglahTable<T extends object>({
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 18 }}
                       transition={{ type: 'spring', stiffness: 420, damping: 32, duration: 0.32 }}
-                      style={{ background: 'inherit' }}
+                      style={{ background: 'inherit', cursor: onRowClick ? 'pointer' : 'inherit' }}
+                      onClick={() => onRowClick?.(row, rowIndex)}
                     >
                       {columns.map((col, colIdx) => (
                         <TableCell 

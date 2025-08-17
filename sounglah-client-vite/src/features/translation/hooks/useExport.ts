@@ -28,16 +28,18 @@ export const useExport = (translations: Translation[]) => {
     setExporting(true);
 
     try {
-      // Prepare CSV data
-      const csvData = translations.map(translation => ({
-        'Source Language': translation.source_lang,
-        'Target Language': translation.target_lang,
+      // Prepare CSV data (use correct language fields from API response)
+      type WithReviewer = { reviewer?: { username?: string } };
+
+      const csvData = translations.map((translation) => ({
+        'Source Language': translation.source_language?.name || translation.source_language?.iso_code || '',
+        'Target Language': translation.target_language?.name || translation.target_language?.iso_code || '',
         'Source Text': translation.source_text,
         'Target Text': translation.target_text,
         'Status': translation.status,
-        'Reviewer': translation.reviewer?.username || '',
-        'Created At': new Date(translation.created_at).toLocaleDateString(),
-        'Updated At': new Date(translation.updated_at).toLocaleDateString(),
+        'Reviewer': (translation as Translation & WithReviewer).reviewer?.username || '',
+        'Created At': translation.created_at ? new Date(translation.created_at).toLocaleDateString() : '',
+        'Updated At': translation.updated_at ? new Date(translation.updated_at).toLocaleDateString() : '',
       }));
 
       // Convert to CSV
